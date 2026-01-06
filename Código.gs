@@ -1,11 +1,14 @@
 // ==========================================
-// ARQUIVO: Code.gs (Backend)
+// ARQUIVO: Código.gs (Backend) - VERSÃO CORRIGIDA
 // ==========================================
+// CORREÇÕES APLICADAS:
+// 1. Notas em análise agora são contabilizadas corretamente
+// 2. getDadosExecutores agora usa coluna B (DATA_CONSOLIDADO) para datas
+// 3. Retorna a data mais recente pré-selecionada
 
 // Configuração
 var SPREADSHEET_ID = '15ZflxC82kDMcK8k4CbZQmX_fO9wDUl86tGYlJ3IMiT4';
 var ABA_CONSOLIDADO = 'Consolidado';
-// NOVO LINK ATUALIZADO:
 var LINK_DIVISAO_EXECUTORES = 'https://script.google.com/macros/s/AKfycbzAXBIR5r5C-8FmgQws4YzL1jzEbNKNBFxLQQ6WjndJL5TeEO-vh3fjp2Dle_Efo3WOzA/exec';
 
 var COL = {
@@ -27,8 +30,9 @@ var COL = {
 var STATUS = {
   EM_PROCESSO: 'em processo de pagamento',
   ATESTADA: 'atestada',
-  INCONFORMIDADE: 'com inconformidade', 
-  PAGA: 'paga'
+  INCONFORMIDADE: 'com inconformidade',
+  PAGA: 'paga',
+  EM_ANALISE: 'em análise' // ADICIONADO
 };
 
 // --- PERSISTENCE HELPERS ---
@@ -94,7 +98,7 @@ function getEmProcesso() {
   var data = getAllData_();
   var stored = getStoredData_();
   var grupos = {};
-  
+
   data.forEach(function(row) {
     var status = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
     if (status === STATUS.EM_PROCESSO) {
@@ -120,7 +124,7 @@ function getEmProcesso() {
       }
     }
   });
-  
+
   var result = Object.values(grupos);
   result.sort(function(a, b) {
     if (!a.dataAtesto) return 1;
@@ -130,17 +134,21 @@ function getEmProcesso() {
   return result;
 }
 
+// ==========================================
+// CORREÇÃO #1: getAtestadas agora contabiliza "em análise" corretamente
+// ==========================================
 function getAtestadas() {
   var data = getAllData_();
   var stored = getStoredData_();
   var grupos = {};
-  
+
   data.forEach(function(row) {
     var status = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
     var isAtestada = status.indexOf('atestada') !== -1;
     var isInconformidade = status.indexOf('inconformidade') !== -1;
-    var isEmAnalise = !status || status.indexOf('analise') !== -1;
-    
+    // CORREÇÃO: Detectar "em análise" de forma mais precisa
+    var isEmAnalise = !status || status === '' || status.indexOf('analise') !== -1 || status.indexOf('análise') !== -1;
+
     if (isAtestada || isInconformidade || isEmAnalise) {
       var groupKey = row[COL.AGENCIA] + '|' + row[COL.CAMPANHA];
       if (!grupos[groupKey]) {
@@ -159,15 +167,16 @@ function getAtestadas() {
         };
       }
       var valor = parseFloat(row[COL.VALOR]) || 0;
-      
-      if (isEmAnalise) {
+
+      // CORREÇÃO: Contabilizar "em análise" ANTES de verificar outras condições
+      if (isEmAnalise && !isAtestada && !isInconformidade) {
         grupos[groupKey].qtdEmAnalise++;
         grupos[groupKey].valorEmAnalise += valor;
       } else if (isAtestada && !isInconformidade) {
         grupos[groupKey].qtdAtestada++;
         grupos[groupKey].valorAtestado += valor;
       }
-      
+
       if (isInconformidade) {
         grupos[groupKey].qtdPendente++;
         grupos[groupKey].valorPendente += valor;
@@ -190,7 +199,7 @@ function getUltimasPagas() {
   var grupos = {};
   var hoje = new Date();
   var limite = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
-  
+
   data.forEach(function(row) {
     var status = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
     var dataPago = row[COL.DATA_PAGO];
@@ -227,53 +236,55 @@ function getDados() {
     pagas: getUltimasPagas()
   };
 }
-// ==========================================
-// DIVISÃO DE NOTAS POR EXECUTOR
-// ==========================================
 
+// ==========================================
+// CORREÇÃO #2: getDadosExecutores usa coluna B (DATA_CONSOLIDADO)
+// e pré-seleciona a data mais recente
+// ==========================================
 function getDadosExecutores(dataStr) {
   var data = getAllData_();
   var datas = {};
   var executores = {};
-  
-  // Coletar datas disponíveis
+
+  // CORREÇÃO: Coletar datas da coluna B (DATA_CONSOLIDADO)
   data.forEach(function(row) {
-    var dataNota = row[COL.DATA_CONSOLIDADO]; // Usando coluna B conforme solicitado
+    var dataNota = row[COL.DATA_CONSOLIDADO]; // Coluna B
     if (dataNota && dataNota instanceof Date) {
       var key = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
       if (key) datas[key] = true;
     }
   });
-  
-  var datasOrdenadas = Object.keys(datas).sort().reverse(); // Todas as datas, ordenadas da mais recente
-  
-  // Se não passou filtro, usar data mais recente
+
+  // Ordenar datas da mais recente para a mais antiga
+  var datasOrdenadas = Object.keys(datas).sort().reverse();
+
+  // CORREÇÃO: Se não passou filtro, usar a data MAIS RECENTE
   var dataSelecionada = dataStr;
   if (!dataSelecionada && datasOrdenadas.length > 0) {
-    dataSelecionada = datasOrdenadas[0];
+    dataSelecionada = datasOrdenadas[0]; // Data mais recente
   }
-  
+
   if (!dataSelecionada) {
-    return { datasDisponiveis: [], executores: [] };
+    return { datasDisponiveis: datasOrdenadas, executores: [], dataSelecionada: null };
   }
-  
-  // Processar dados da data selecionada
+
+  // CORREÇÃO: Processar dados usando a coluna B (DATA_CONSOLIDADO) para filtrar
   data.forEach(function(row) {
-    var dataNota = row[COL.ATESTO];
+    var dataNota = row[COL.DATA_CONSOLIDADO]; // Coluna B
     if (!dataNota || !(dataNota instanceof Date)) return;
-    
+
     var dataNotaStr = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
     if (dataNotaStr !== dataSelecionada) return;
-    
+
     var executor = String(row[COL.EXECUTOR] || '').trim();
     if (!executor) executor = 'SEM EXECUTOR';
-    
+
     var agencia = String(row[COL.AGENCIA] || '').toUpperCase().trim();
     var statusRaw = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
     var valor = parseFloat(row[COL.VALOR]) || 0;
     var nf = String(row[COL.NF] || '').trim();
-    var emAnalise = !statusRaw || statusRaw.indexOf('analise') !== -1;
-    
+    var emAnalise = !statusRaw || statusRaw.indexOf('analise') !== -1 || statusRaw.indexOf('análise') !== -1;
+
     if (!executores[executor]) {
       executores[executor] = {
         nome: executor,
@@ -281,7 +292,7 @@ function getDadosExecutores(dataStr) {
         nfsAv: [], nfsCalia: [], nfsEbm: []
       };
     }
-    
+
     if (agencia.indexOf('AV') !== -1 || agencia === 'AV') {
       executores[executor].av++;
       if (nf) executores[executor].nfsAv.push(nf);
@@ -292,15 +303,15 @@ function getDadosExecutores(dataStr) {
       executores[executor].ebm++;
       if (nf) executores[executor].nfsEbm.push(nf);
     }
-    
+
     executores[executor].total++;
     executores[executor].valor += valor;
     if (emAnalise) executores[executor].emAnalise++;
   });
-  
+
   var result = Object.values(executores);
   result.sort(function(a, b) { return b.total - a.total; });
-  
+
   return {
     datasDisponiveis: datasOrdenadas,
     executores: result,
@@ -312,7 +323,7 @@ function getDadosExecutores(dataStr) {
 // INTEGRAÇÃO: GERADOR DE TABELA DE CONTROLE DE PAGAMENTO
 // ======================================================================
 
-const SHEET_NAME_EMPENHOS = 'SaldoEmpenhos'; 
+const SHEET_NAME_EMPENHOS = 'SaldoEmpenhos';
 const SHEET_NAME_CERTIDOES = 'Certidões';
 
 function filtrarControleDePagamento(valorBusca) {
@@ -326,18 +337,18 @@ function filtrarControleDePagamento(valorBusca) {
       const valorT_raw = r[COL.CONTROLE];
       let valorT = typeof valorT_raw === 'number' ? valorT_raw.toFixed(0) : String(valorT_raw || "");
       valorT = valorT.trim();
-      
+
       if (!r[0] && !r[2] && !r[5]) continue;
 
       if (buscaStr === "" || valorT.includes(buscaStr)) {
         out.push({
-          agencia_principal: String(r[COL.AGENCIA] || ""), 
-          valor_nf_agencia: (r[6] === "" || r[6] == null) ? 0 : Number(r[6]), // Mantendo índices fixos se não mapeados
-          veiculo_forn: String(r[COL.VEICULO] || ""), 
-          cnpj: String(r[10] || ""), 
-          tipo_midia: String(r[COL.TIPO_MIDIA] || ""), 
-          valor_nf: (r[COL.VALOR] === "" || r[COL.VALOR] == null) ? 0 : Number(r[COL.VALOR]), 
-          nf: String(r[COL.NF] || ""), 
+          agencia_principal: String(r[COL.AGENCIA] || ""),
+          valor_nf_agencia: (r[6] === "" || r[6] == null) ? 0 : Number(r[6]),
+          veiculo_forn: String(r[COL.VEICULO] || ""),
+          cnpj: String(r[10] || ""),
+          tipo_midia: String(r[COL.TIPO_MIDIA] || ""),
+          valor_nf: (r[COL.VALOR] === "" || r[COL.VALOR] == null) ? 0 : Number(r[COL.VALOR]),
+          nf: String(r[COL.NF] || ""),
           glosa: (r[14] === "" || r[14] == null) ? 0 : Number(r[14]),
         });
       }
@@ -364,12 +375,12 @@ function getSaldoByPI(valorBusca) {
       const r = data[i];
       const valorT_raw = r[COL.CONTROLE];
       let valorT = typeof valorT_raw === 'number' ? valorT_raw.toFixed(0) : String(valorT_raw || "");
-      valorT = valorT.trim().toUpperCase(); 
+      valorT = valorT.trim().toUpperCase();
 
       if (valorT.includes(buscaStr)) {
         agencia = String(r[COL.AGENCIA] || "").trim();
         campanha = String(r[COL.CAMPANHA] || "").trim();
-        break; 
+        break;
       }
     }
 
@@ -377,11 +388,11 @@ function getSaldoByPI(valorBusca) {
 
     const shEmpenhos = ss.getSheetByName(SHEET_NAME_EMPENHOS);
     if (!shEmpenhos) return { ...defaultReturn, agencia, campanha };
-    
+
     const rowsEmpenhos = shEmpenhos.getDataRange().getValues();
     const buscaAgenciaUpper = agencia.toUpperCase();
     const buscaCampanhaUpper = campanha.toUpperCase();
-    
+
     for (let i = 1; i < rowsEmpenhos.length; i++) {
       const r = rowsEmpenhos[i];
       const valorAgenciaEmpenho = String(r[5] || "").trim().toUpperCase();
@@ -389,26 +400,26 @@ function getSaldoByPI(valorBusca) {
 
       if (valorAgenciaEmpenho.includes(buscaAgenciaUpper) && valorCampanhaEmpenho.includes(buscaCampanhaUpper)) {
         saldoAtual = (r[7] === "" || r[7] == null) ? 0 : Number(r[7]);
-        break; 
+        break;
       }
     }
 
     return { saldo: saldoAtual, agencia: agencia, campanha: campanha };
   } catch (e) {
-    return defaultReturn; 
+    return defaultReturn;
   }
 }
 
 function getCertidoesByAgencia(agenciaBusca) {
     const defaultReturn = { rfb: null, sefaz_df: null, fgts: null, tst: null, link: null, agencia_cert: null };
-    const buscaAgencia = String(agenciaBusca || "").trim().toUpperCase(); 
+    const buscaAgencia = String(agenciaBusca || "").trim().toUpperCase();
     if (!buscaAgencia) return defaultReturn;
-    
+
     try {
         const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
         const sh = ss.getSheetByName(SHEET_NAME_CERTIDOES);
         if (!sh) return defaultReturn;
-        
+
         const rows = sh.getDataRange().getValues();
         for (let i = 1; i < rows.length; i++) {
             const r = rows[i];
@@ -424,7 +435,7 @@ function getCertidoesByAgencia(agenciaBusca) {
                 };
             }
         }
-        return defaultReturn; 
+        return defaultReturn;
     } catch (e) {
         return defaultReturn;
     }
