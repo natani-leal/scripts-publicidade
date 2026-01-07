@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: hsl(220, 20%, 97%);
+            color: hsl(220, 25%, 25%);
+            padding: 20px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            background: white;
+            border-radius: 50px;
+            border: 1px solid hsl(220, 15%, 90%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .header-icon {
+            width: 24px;
+            height: 24px;
+            color: hsl(252, 85%, 60%);
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: hsl(220, 25%, 25%);
+        }
+        /* Section */
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid hsl(220, 15%, 92%);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid hsl(220, 15%, 94%);
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: hsl(220, 25%, 25%);
+        }
+        .section-title .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .section.processo .dot { background: hsl(38, 95%, 55%); }
+        .section.atestadas .dot { background: hsl(142, 70%, 45%); }
+        .section.pagas .dot { background: hsl(217, 90%, 60%); }
+        .section.gerador .dot { background: hsl(252, 85%, 60%); }
+
+        /* Cores das agências na tabela: AV = Roxo, CALIA = Laranja, EBM = Cinza */
+        .agencia-av {
+            color: hsl(270, 70%, 55%) !important;
+            font-weight: 600;
+        }
+        .agencia-calia {
+            color: hsl(30, 90%, 50%) !important;
+            font-weight: 600;
+        }
+        .agencia-ebm {
+            color: hsl(220, 10%, 50%) !important;
+            font-weight: 600;
+        }
+
+        /* Cards Row */
+        .cards-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        /* Link Card - Input ANTES da expansão */
+        .link-card {
+            background: white;
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            transition: all 0.2s ease;
+        }
+        .link-card:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            border-color: hsl(270, 70%, 55%);
+        }
+        .link-card.expanded {
+            grid-column: 1 / -1;
+        }
+        .link-card-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .link-card-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: hsl(270, 70%, 92%);
+            color: hsl(270, 70%, 55%);
+        }
+        .link-card-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        .link-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: hsl(220, 25%, 25%);
+        }
+
+        /* Input inline com o título, antes da expansão */
+        .gerador-input-inline {
+            margin-left: auto;
+        }
+        .gerador-input {
+            width: 320px;
+            padding: 10px 14px;
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: hsl(220, 20%, 98%);
+            transition: all 0.2s;
+        }
+        .gerador-input:focus {
+            outline: none;
+            border-color: hsl(38, 95%, 55%);
+            background: white;
+            box-shadow: 0 0 0 3px hsla(38, 95%, 55%, 0.15);
+        }
+        .gerador-input::placeholder {
+            color: hsl(220, 10%, 60%);
+        }
+
+        .link-card-content {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(220, 15%, 94%);
+            animation: fadeIn 0.3s ease-out;
+        }
+        .link-card-content.show {
+            display: block;
+        }
+
+        /* Executor Date Selector - Menu Suspenso */
+        .executor-date-select {
+            margin-left: auto;
+            padding-left: 16px;
+        }
+        .date-select-dropdown {
+            width: 320px;
+            padding: 10px 14px;
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            background: hsl(220, 20%, 98%);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .date-select-dropdown:focus {
+            outline: none;
+            border-color: hsl(252, 85%, 60%);
+            background: white;
+            box-shadow: 0 0 0 3px hsla(252, 85%, 60%, 0.15);
+        }
+
+        /* Table */
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            background: hsl(220, 20%, 97%);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: hsl(220, 10%, 50%);
+            border-bottom: 2px solid hsl(220, 15%, 92%);
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid hsl(220, 15%, 95%);
+            vertical-align: middle;
+        }
+        tr:hover td { background: hsl(220, 20%, 98%); }
+        tr:last-child td { border-bottom: none; }
+        .agencia { font-weight: 600; vertical-align: middle; }
+        .campanha { color: hsl(220, 25%, 35%); vertical-align: middle; }
+        .controle {
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.8rem;
+            background: hsl(220, 15%, 96%);
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: hsl(220, 25%, 40%);
+        }
+        .qtd { text-align: center; font-weight: 400; }
+        .valor {
+            font-weight: 400;
+            color: hsl(220, 15%, 35%);
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        /* Count Badge */
+        .count-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        .count-badge.blue {
+            background: hsl(217, 90%, 95%);
+            color: hsl(217, 90%, 45%);
+        }
+        .count-badge.red {
+            background: hsl(0, 75%, 95%);
+            color: hsl(0, 75%, 45%);
+        }
+        .count-badge.gray {
+            background: hsl(220, 15%, 96%);
+            color: hsl(220, 10%, 50%);
+        }
+        .count-badge.orange {
+            background: hsl(38, 95%, 95%);
+            color: hsl(38, 60%, 35%);
+        }
+
+        /* Executor Table */
+        .executor-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        .executor-table th {
+            text-align: center;
+            padding: 12px 16px;
+            background: hsl(220, 20%, 97%);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: hsl(220, 10%, 50%);
+            border-bottom: 2px solid hsl(220, 15%, 92%);
+        }
+        .executor-table th:first-child { text-align: left; }
+        .executor-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid hsl(220, 15%, 95%);
+            vertical-align: middle;
+            text-align: center;
+        }
+        .executor-table td:first-child { text-align: left; }
+        .executor-table tr:hover td { background: hsl(220, 20%, 98%); }
+        .executor-table .executor-name { font-weight: 600; color: hsl(220, 15%, 30%); vertical-align: middle; }
+        .executor-table .count { text-align: center; font-weight: 400; vertical-align: middle; color: hsl(220, 15%, 35%); }
+        .executor-table .count.av { color: hsl(270, 70%, 55%); font-weight: 600; }
+        .executor-table .count.calia { color: hsl(30, 90%, 50%); font-weight: 600; }
+        .executor-table .count.ebm { color: hsl(220, 10%, 50%); font-weight: 600; }
+        .executor-table .valor {
+            font-weight: 400;
+            color: hsl(220, 15%, 35%);
+            white-space: nowrap;
+            text-align: center;
+        }
+        .executor-table .summary-row {
+            background: hsl(220, 20%, 97%) !important;
+            font-weight: 600;
+        }
+        .executor-table .summary-row td {
+            border-top: 2px solid hsl(220, 15%, 90%);
+            padding-top: 16px;
+        }
+        .executor-table .summary-row .count { font-weight: 600; }
+
+        /* Status Select - Cinza claro padrão, apenas OB colorido */
+        .status-select {
+            padding: 8px 12px;
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            background: hsl(220, 20%, 98%);
+            cursor: pointer;
+            min-width: 140px;
+        }
+        .status-select.montando,
+        .status-select.aguardando,
+        .status-select.dicom,
+        .status-select.daf,
+        .status-select.enviado {
+            background: hsl(220, 20%, 98%);
+            border-color: hsl(220, 15%, 90%);
+        }
+        .status-select.ob {
+            background: hsl(142, 70%, 93%);
+            border-color: hsl(142, 70%, 65%);
+        }
+
+        /* Obs Input */
+        .obs-input {
+            width: 100%;
+            min-width: 120px;
+            padding: 8px 12px;
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            background: hsl(220, 20%, 98%);
+        }
+        .obs-input:focus {
+            outline: none;
+            border-color: hsl(252, 85%, 60%);
+            background: white;
+            box-shadow: 0 0 0 3px hsla(252, 85%, 60%, 0.1);
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .loading.show { display: flex; }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid hsl(220, 15%, 90%);
+            border-top-color: hsl(252, 85%, 60%);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Pendentes / Inconformidades */
+        .pendente-item {
+            background: hsl(0, 75%, 97%);
+            border: 1px solid hsl(0, 75%, 90%);
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            color: hsl(0, 75%, 40%);
+            font-size: 0.75rem;
+            cursor: default;
+        }
+        /* Diligência interna - estilo diferenciado */
+        .diligencia-item {
+            background: hsl(38, 95%, 95%);
+            border: 1px solid hsl(38, 95%, 80%);
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            color: hsl(38, 60%, 35%);
+            font-size: 0.75rem;
+            cursor: default;
+        }
+        /* Tooltip para pendentes */
+        .pendente-item[title], .diligencia-item[title] {
+            cursor: help;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: hsl(220, 10%, 55%);
+        }
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        /* Summary Row */
+        .summary-row {
+            background: hsl(220, 20%, 97%) !important;
+            font-weight: 600;
+        }
+        .summary-row td {
+            border-top: 2px solid hsl(220, 15%, 90%);
+        }
+
+        /* Error */
+        #error {
+            display: none;
+            background: hsla(0, 75%, 55%, 0.1);
+            color: hsl(0, 75%, 45%);
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            text-align: center;
+            border: 1px solid hsla(0, 75%, 55%, 0.2);
+        }
+        #error.show { display: block; }
+
+        /* Pagas table centered */
+        .section.pagas td { text-align: center; vertical-align: middle; }
+        .section.pagas th { text-align: center; }
+        .section.pagas .controle { display: inline-block; }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando dados...</p>
+    </div>
+    <div id="error"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-badge">
+                <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h1>Planejamento e acompanhamento de pagamentos</h1>
+            </div>
+        </div>
+
+        <!-- MOVIDO PARA O TOPO: Divisão de Notas por Executor com menu suspenso -->
+        <div class="section executores">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="dot" style="background: hsl(252, 85%, 60%);"></span>
+                    Divisão de Notas por Executor
+                </h2>
+                <div class="executor-date-select">
+                    <select id="executorDateSelect" class="date-select-dropdown" onchange="carregarExecutores(this.value)">
+                        <option value="">Carregando datas...</option>
+                    </select>
+                </div>
+            </div>
+            <div id="executorTableContainer">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <p>Carregando dados dos executores...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards Row -->
+        <div class="cards-row">
+            <!-- Gerar Tabela de Controle de Pagamento -->
+            <div class="link-card" id="geradorCard">
+                <div class="link-card-header">
+                    <div class="link-card-icon" style="background: hsl(38, 95%, 92%); color: hsl(38, 95%, 55%);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h2 class="link-card-title">Gerar Tabela de Controle de Pagamento</h2>
+                    <!-- Input inline com o título -->
+                    <div class="gerador-input-inline">
+                        <input type="text" id="valorBuscaGerador" class="gerador-input" placeholder="Digite o nº SEI do Controle" oninput="debounceSearchGerador()">
+                    </div>
+                </div>
+                <div class="link-card-content" id="geradorContent">
+                    <div id="statusSaldoGerador" style="margin-top: 15px; font-size: 0.9rem;"></div>
+                    <!-- REMOVIDO: certidoesAreaGerador - pasta restrita do OneDrive -->
+                    <div id="atestoInfoGerador" style="margin-top: 20px;"></div>
+                    <div id="loadingGerador" style="display:none; text-align: center; padding: 20px;">
+                        <div class="spinner" style="margin: 0 auto; width: 32px; height: 32px;"></div>
+                        <p style="margin-top: 10px;">Buscando dados...</p>
+                    </div>
+                    <div id="tableContainerGerador"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notas em Processo de Pagamento -->
+        <div class="section processo">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="dot"></span>
+                    Notas em Processo de Pagamento
+                </h2>
+                <span id="count-processo" class="count-badge gray">0 processo(s)</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Agência</th>
+                            <th>Campanha</th>
+                            <th>Controle</th>
+                            <th style="text-align:center">Qtd NFs</th>
+                            <th>Valor Total</th>
+                            <th>Data Atesto</th>
+                            <th>Status</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-processo"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Notas em análise, atestadas ou com inconformidade -->
+        <div class="section atestadas">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="dot"></span>
+                    Notas em análise, atestadas ou com inconformidade
+                </h2>
+                <div class="section-count" id="count-atestadas"></div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align:center">Agência</th>
+                            <th style="text-align:center">Campanha</th>
+                            <th style="text-align:center">Qtd NFs</th>
+                            <th style="text-align:center">Valor</th>
+                            <th>Inconformidades</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-atestadas"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagas (último mês) -->
+        <div class="section pagas">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="dot"></span>
+                    Pagas (último mês)
+                </h2>
+                <span id="count-pagas" class="count-badge gray">0 processo(s)</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Agência</th>
+                            <th>Campanha</th>
+                            <th>Controle</th>
+                            <th>Qtd NFs</th>
+                            <th>Valor Total</th>
+                            <th>Data Pagamento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-pagas"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // VARIÁVEIS GLOBAIS
+        // ==========================================
+        var dados = { emProcesso: [], atestadas: [], pagas: [] };
+        var DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        var STATUS_OPTIONS = [
+            { value: 'montando', label: 'Montando' },
+            { value: 'aguardando', label: 'Aguardando Assinaturas' },
+            { value: 'dicom', label: 'DICOM' },
+            { value: 'daf', label: 'DAF' },
+            { value: 'ob', label: 'OB' },
+            { value: 'enviado', label: 'Controle Retenções Enviado' }
+        ];
+        var searchTimeoutGerador = null;
+
+        // ==========================================
+        // FUNÇÕES UTILITÁRIAS
+        // ==========================================
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+
+        function showError(msg) {
+            var el = document.getElementById('error');
+            el.textContent = msg;
+            el.classList.toggle('show', !!msg);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatCurrency(value) {
+            return 'R$ ' + (value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            var d = new Date(date);
+            if (isNaN(d)) return '-';
+            var dia = String(d.getDate()).padStart(2, '0');
+            var mes = String(d.getMonth() + 1).padStart(2, '0');
+            var ano = d.getFullYear();
+            var diaSemana = DIAS_SEMANA[d.getDay()];
+            var hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            var dataComp = new Date(d);
+            dataComp.setHours(0, 0, 0, 0);
+            var diffMs = hoje - dataComp;
+            var diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            var agoText = '';
+            if (diffDias === 0) agoText = 'hoje';
+            else if (diffDias === 1) agoText = 'há 1 dia';
+            else if (diffDias > 1) agoText = 'há ' + diffDias + ' dias';
+            return '<span>' + dia + '/' + mes + '/' + ano + '</span><span class="data-dia">' + diaSemana + (agoText ? ' · ' + agoText : '') + '</span>';
+        }
+
+        function formatDateSimple(dateStr) {
+            if (!dateStr) return '-';
+            var parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
+
+        // Cores das agências: AV = Roxo, CALIA = Laranja, EBM = Cinza
+        function getAgencyClass(agencia) {
+            if (!agencia) return '';
+            var upper = agencia.toUpperCase();
+            if (upper.indexOf('AV') !== -1 || upper === 'AV') return 'agencia-av';
+            if (upper.indexOf('CALIA') !== -1) return 'agencia-calia';
+            if (upper.indexOf('EBM') !== -1) return 'agencia-ebm';
+            return '';
+        }
+
+        // ==========================================
+        // STATUS SELECT
+        // ==========================================
+        function createStatusSelect(currentStatus, key) {
+            var html = '<select class="status-select ' + currentStatus + '" onchange="updateStatus(\'' + key + '\', this.value)">';
+            STATUS_OPTIONS.forEach(function(opt) {
+                var selected = opt.value === currentStatus ? 'selected' : '';
+                html += '<option value="' + opt.value + '" ' + selected + '>' + opt.label + '</option>';
+            });
+            html += '</select>';
+            return html;
+        }
+
+        function updateStatus(key, newStatus) {
+            var select = event.target;
+            select.className = 'status-select ' + newStatus;
+            saveField('emProcesso', key, 'statusPag', newStatus);
+        }
+
+        function saveObs(section, key, value) {
+            saveField(section, key, 'obs', value);
+        }
+
+        function saveField(section, key, field, value) {
+            if (window.google && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function() {})
+                    .withFailureHandler(function(err) { console.error('Erro ao salvar:', err); })
+                    .saveField(section, key, field, value);
+            }
+        }
+
+        // ==========================================
+        // RENDER EM PROCESSO
+        // ==========================================
+        function renderEmProcesso() {
+            var tbody = document.getElementById('tbody-processo');
+            var count = document.getElementById('count-processo');
+            var items = dados.emProcesso || [];
+            count.textContent = items.length + ' processo(s)';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><p>Nenhum pagamento em processo</p></div></td></tr>';
+                return;
+            }
+
+            var totalValor = 0;
+            var totalQtd = 0;
+            var html = items.map(function(item) {
+                var key = item.agencia + '|' + item.campanha + '|' + item.controle;
+                totalValor += item.valor;
+                totalQtd += item.qtd;
+                var agencyClass = getAgencyClass(item.agencia);
+                return '<tr>' +
+                    '<td class="agencia ' + agencyClass + '">' + (item.agencia || '-') + '</td>' +
+                    '<td class="campanha">' + (item.campanha || '-') + '</td>' +
+                    '<td><span class="controle">' + (item.controle || '-') + '</span></td>' +
+                    '<td class="qtd">' + item.qtd + '</td>' +
+                    '<td class="valor">' + formatCurrency(item.valor) + '</td>' +
+                    '<td class="data">' + formatDate(item.dataAtesto) + '</td>' +
+                    '<td>' + createStatusSelect(item.statusPag || 'montando', key) + '</td>' +
+                    '<td><input type="text" class="obs-input" style="min-width: 200px;" placeholder="Observação..." value="' + escapeHtml(item.obs || '') + '" onchange="saveObs(\'emProcesso\', \'' + escapeHtml(key) + '\', this.value)"></td>' +
+                    '</tr>';
+            }).join('');
+
+            html += '<tr class="summary-row">' +
+                '<td><strong>Total</strong></td><td></td><td></td>' +
+                '<td class="qtd"><strong>' + totalQtd + '</strong></td>' +
+                '<td class="valor"><strong>' + formatCurrency(totalValor) + '</strong></td>' +
+                '<td></td><td></td><td></td></tr>';
+
+            tbody.innerHTML = html;
+        }
+
+        // ==========================================
+        // RENDER ATESTADAS - Com cores de agência, diligência e tooltip
+        // ==========================================
+        function renderAtestadas() {
+            var tbody = document.getElementById('tbody-atestadas');
+            var countEl = document.getElementById('count-atestadas');
+            var items = dados.atestadas || [];
+
+            // Ordenar por agência: AV > Calia > EBM
+            var agenciaOrdem = { 'AV': 1, 'CALIA': 2, 'EBM': 3 };
+            items.sort(function(a, b) {
+                var agA = (a.agencia || '').toUpperCase();
+                var agB = (b.agencia || '').toUpperCase();
+                var ordemA = agenciaOrdem[agA] || (agA.indexOf('AV') !== -1 ? 1 : agA.indexOf('CALIA') !== -1 ? 2 : agA.indexOf('EBM') !== -1 ? 3 : 4);
+                var ordemB = agenciaOrdem[agB] || (agB.indexOf('AV') !== -1 ? 1 : agB.indexOf('CALIA') !== -1 ? 2 : agB.indexOf('EBM') !== -1 ? 3 : 4);
+                return ordemA - ordemB;
+            });
+
+            var emProcessoItems = dados.emProcesso || [];
+            var emProcessoKeys = {};
+            emProcessoItems.forEach(function(item) {
+                var key = (item.agencia || '') + '|' + (item.campanha || '');
+                emProcessoKeys[key] = true;
+            });
+
+            var totalEmAnalise = 0, totalAtestadas = 0, totalPendentes = 0, totalDiligencia = 0;
+            items.forEach(function(item) {
+                totalEmAnalise += item.qtdEmAnalise || 0;
+                totalAtestadas += item.qtdAtestada || 0;
+                totalPendentes += item.qtdPendente || 0;
+                totalDiligencia += item.qtdDiligencia || 0;
+            });
+
+            var countHtml = '';
+            if (totalEmAnalise > 0) countHtml += '<span class="count-badge gray">' + totalEmAnalise + ' em análise</span>';
+            countHtml += '<span class="count-badge blue">' + totalAtestadas + ' atestadas</span>';
+            if (totalPendentes > 0) countHtml += '<span class="count-badge red">' + totalPendentes + ' inconformidades</span>';
+            if (totalDiligencia > 0) countHtml += '<span class="count-badge orange">' + totalDiligencia + ' em diligência</span>';
+            countEl.innerHTML = countHtml;
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg><p>Nenhuma nota atestada pendente</p></div></td></tr>';
+                return;
+            }
+
+            var totalValorEmAnalise = 0, totalValorAtestado = 0, totalValorPendente = 0, totalValorDiligencia = 0;
+            var totalQtdEmAnalise = 0, totalQtdAtestada = 0, totalQtdPendente = 0, totalQtdDiligencia = 0;
+
+            var html = items.map(function(item) {
+                var key = (item.agencia || '') + '|' + (item.campanha || '');
+                totalValorEmAnalise += item.valorEmAnalise || 0;
+                totalValorAtestado += item.valorAtestado || 0;
+                totalValorPendente += item.valorPendente || 0;
+                totalValorDiligencia += item.valorDiligencia || 0;
+                totalQtdEmAnalise += item.qtdEmAnalise || 0;
+                totalQtdAtestada += item.qtdAtestada || 0;
+                totalQtdPendente += item.qtdPendente || 0;
+                totalQtdDiligencia += item.qtdDiligencia || 0;
+
+                // Pendências / Inconformidades com tooltip (coluna P - motivo), tipo de mídia e executor (coluna N)
+                var pendentesHtml = '';
+                if (item.pendentes && item.pendentes.length > 0) {
+                    pendentesHtml = item.pendentes.map(function(p) {
+                        var tooltip = p.motivo ? ' title="' + escapeHtml(p.motivo) + '"' : '';
+                        var tipoMidia = p.tipoMidia ? ' | ' + p.tipoMidia : '';
+                        var executor = p.executor ? ' | ' + p.executor : '';
+                        return '<div class="pendente-item"' + tooltip + '><span class="pendente-info">NF: ' + (p.nf || '-') + tipoMidia + ' | ' + (p.veiculo || '-') + executor + '</span></div>';
+                    }).join('');
+                }
+
+                // Em diligência interna - mostrar apenas quando existir
+                if (item.diligencias && item.diligencias.length > 0) {
+                    pendentesHtml += item.diligencias.map(function(d) {
+                        var tooltip = d.motivo ? ' title="' + escapeHtml(d.motivo) + '"' : '';
+                        var tipoMidia = d.tipoMidia ? ' | ' + d.tipoMidia : '';
+                        var executor = d.executor ? ' | ' + d.executor : '';
+                        return '<div class="diligencia-item"' + tooltip + '><span>NF: ' + (d.nf || '-') + tipoMidia + ' (diligência)' + executor + '</span></div>';
+                    }).join('');
+                }
+
+                if (!pendentesHtml) pendentesHtml = '-';
+
+                var qtdTotal = (item.qtdEmAnalise || 0) + (item.qtdAtestada || 0) + (item.qtdPendente || 0) + (item.qtdDiligencia || 0);
+                var qtdHtml = '<div style="color: hsl(220, 15%, 35%);">' + qtdTotal + '</div><div class="qtd-sub" style="color: hsl(220, 10%, 60%); font-size: 0.75rem;"><div>' + (item.qtdEmAnalise || 0) + '</div><div>' + (item.qtdAtestada || 0) + '</div>';
+                if ((item.qtdPendente || 0) > 0) qtdHtml += '<div>' + item.qtdPendente + '</div>';
+                if ((item.qtdDiligencia || 0) > 0) qtdHtml += '<div>' + item.qtdDiligencia + '</div>';
+                qtdHtml += '</div>';
+
+                var valorTotal = (item.valorEmAnalise || 0) + (item.valorAtestado || 0) + (item.valorPendente || 0) + (item.valorDiligencia || 0);
+                var valorHtml = '<div style="color: hsl(220, 15%, 35%);">' + formatCurrency(valorTotal) + '</div><div class="valor-sub" style="color: hsl(220, 10%, 60%); font-size: 0.75rem;"><div>' + formatCurrency(item.valorEmAnalise || 0) + '</div><div>' + formatCurrency(item.valorAtestado || 0) + '</div>';
+                if ((item.valorPendente || 0) > 0) valorHtml += '<div>' + formatCurrency(item.valorPendente) + '</div>';
+                if ((item.valorDiligencia || 0) > 0) valorHtml += '<div>' + formatCurrency(item.valorDiligencia) + '</div>';
+                valorHtml += '</div>';
+
+                var agencyClass = getAgencyClass(item.agencia);
+                return '<tr>' +
+                    '<td class="agencia ' + agencyClass + '" style="text-align:center;">' + (item.agencia || '-') + '</td>' +
+                    '<td class="campanha" style="text-align:center;">' + (item.campanha || '-') + '</td>' +
+                    '<td class="qtd" style="text-align:center;">' + qtdHtml + '</td>' +
+                    '<td style="text-align:center;">' + valorHtml + '</td>' +
+                    '<td class="pendentes-cell">' + pendentesHtml + '</td>' +
+                    '<td><input type="text" class="obs-input" style="min-width: 200px;" placeholder="Observação..." value="' + escapeHtml(item.obs || '') + '" onchange="saveObs(\'atestadas\', \'' + escapeHtml(key) + '\', this.value)"></td>' +
+                    '</tr>';
+            }).join('');
+
+            var summaryQtdTotal = totalQtdEmAnalise + totalQtdAtestada + totalQtdPendente + totalQtdDiligencia;
+            var summaryQtdHtml = '<div style="color: hsl(220, 15%, 35%); font-weight: 600;">' + summaryQtdTotal + '</div><div class="qtd-sub" style="color: hsl(220, 10%, 60%); font-size: 0.75rem;"><div>' + totalQtdEmAnalise + '</div><div>' + totalQtdAtestada + '</div>';
+            if (totalQtdPendente > 0) summaryQtdHtml += '<div>' + totalQtdPendente + '</div>';
+            if (totalQtdDiligencia > 0) summaryQtdHtml += '<div>' + totalQtdDiligencia + '</div>';
+            summaryQtdHtml += '</div>';
+
+            var summaryValorTotal = totalValorEmAnalise + totalValorAtestado + totalValorPendente + totalValorDiligencia;
+            var summaryValorHtml = '<div style="color: hsl(220, 15%, 35%); font-weight: 600;">' + formatCurrency(summaryValorTotal) + '</div><div class="valor-sub" style="color: hsl(220, 10%, 60%); font-size: 0.75rem;"><div>' + formatCurrency(totalValorEmAnalise) + '</div><div>' + formatCurrency(totalValorAtestado) + '</div>';
+            if (totalValorPendente > 0) summaryValorHtml += '<div>' + formatCurrency(totalValorPendente) + '</div>';
+            if (totalValorDiligencia > 0) summaryValorHtml += '<div>' + formatCurrency(totalValorDiligencia) + '</div>';
+            summaryValorHtml += '</div>';
+
+            html += '<tr class="summary-row"><td colspan="2" style="text-align:center;"><strong>Total</strong></td><td class="qtd" style="text-align:center;">' + summaryQtdHtml + '</td><td style="text-align:center;">' + summaryValorHtml + '</td><td colspan="2"></td></tr>';
+            tbody.innerHTML = html;
+        }
+
+        // ==========================================
+        // RENDER PAGAS
+        // ==========================================
+        function renderPagas() {
+            var tbody = document.getElementById('tbody-pagas');
+            var count = document.getElementById('count-pagas');
+            var items = dados.pagas || [];
+            count.textContent = items.length + ' processo(s)';
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><p>Nenhum pagamento recente</p></div></td></tr>';
+                return;
+            }
+
+            var totalValor = 0;
+            var totalQtd = 0;
+            var html = items.map(function(item) {
+                var agencyClass = getAgencyClass(item.agencia);
+                totalValor += item.valor || 0;
+                totalQtd += item.qtd || 0;
+                
+                // Formatar data com dia da semana e dias atrás em linha menor
+                var dataHtml = '-';
+                if (item.dataPago) {
+                    var d = new Date(item.dataPago);
+                    if (!isNaN(d)) {
+                        var dia = String(d.getDate()).padStart(2, '0');
+                        var mes = String(d.getMonth() + 1).padStart(2, '0');
+                        var ano = d.getFullYear();
+                        var diaSemana = DIAS_SEMANA[d.getDay()];
+                        var hoje = new Date();
+                        hoje.setHours(0, 0, 0, 0);
+                        var dataComp = new Date(d);
+                        dataComp.setHours(0, 0, 0, 0);
+                        var diffMs = hoje - dataComp;
+                        var diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        var agoText = '';
+                        if (diffDias === 0) agoText = 'hoje';
+                        else if (diffDias === 1) agoText = 'há 1 dia';
+                        else if (diffDias > 1) agoText = 'há ' + diffDias + ' dias';
+                        dataHtml = '<div>' + dia + '/' + mes + '/' + ano + '</div><div style="font-size: 0.7rem; color: hsl(220, 10%, 55%);">' + diaSemana + (agoText ? ' · ' + agoText : '') + '</div>';
+                    }
+                }
+                
+                return '<tr>' +
+                    '<td class="agencia ' + agencyClass + '">' + (item.agencia || '-') + '</td>' +
+                    '<td class="campanha">' + (item.campanha || '-') + '</td>' +
+                    '<td><span class="controle">' + (item.controle || '-') + '</span></td>' +
+                    '<td class="qtd" style="font-weight: 400;">' + item.qtd + '</td>' +
+                    '<td style="color: hsl(220, 15%, 35%);">' + formatCurrency(item.valor) + '</td>' +
+                    '<td class="data">' + dataHtml + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            html += '<tr class="summary-row">' +
+                '<td colspan="3"><strong>Total</strong></td>' +
+                '<td class="qtd" style="font-weight: 600;">' + totalQtd + '</td>' +
+                '<td style="color: hsl(220, 15%, 35%); font-weight: 600;">' + formatCurrency(totalValor) + '</td>' +
+                '<td></td></tr>';
+
+            tbody.innerHTML = html;
+        }
+
+        // ==========================================
+        // EXECUTORES - Menu suspenso com data mais recente
+        // ==========================================
+        function carregarExecutorDatasDisponiveis() {
+            if (!window.google || !google.script || !google.script.run) {
+                document.getElementById('executorDateSelect').innerHTML = '<option value="">Não disponível</option>';
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    var select = document.getElementById('executorDateSelect');
+                    var datasDisponiveis = result.datasDisponiveis || [];
+
+                    if (datasDisponiveis.length === 0) {
+                        select.innerHTML = '<option value="">Nenhuma data disponível</option>';
+                        return;
+                    }
+
+                    // Primeira opção é a data mais recente (já vem ordenada)
+                    var html = '';
+                    datasDisponiveis.forEach(function(data, idx) {
+                        var selected = idx === 0 ? 'selected' : '';
+                        html += '<option value="' + data + '" ' + selected + '>' + formatDateSimple(data) + '</option>';
+                    });
+                    select.innerHTML = html;
+
+                    // Carregar executores da data mais recente
+                    renderExecutores(result);
+                })
+                .withFailureHandler(function(err) {
+                    console.error('Erro ao carregar datas:', err);
+                    document.getElementById('executorDateSelect').innerHTML = '<option value="">Erro ao carregar</option>';
+                })
+                .getDadosExecutores(null); // null = pegar data mais recente
+        }
+
+        function carregarExecutores(dataSelecionada) {
+            if (!window.google || !google.script || !google.script.run) return;
+
+            document.getElementById('executorTableContainer').innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;"></div><p>Carregando...</p></div>';
+
+            google.script.run
+                .withSuccessHandler(renderExecutores)
+                .withFailureHandler(function(err) {
+                    document.getElementById('executorTableContainer').innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro ao carregar: ' + err.message + '</p></div>';
+                })
+                .getDadosExecutores(dataSelecionada);
+        }
+
+        function renderExecutores(result) {
+            var container = document.getElementById('executorTableContainer');
+            var executores = result.executores || [];
+
+            if (executores.length === 0) {
+                container.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15h8M9 9h.01M15 9h.01"/></svg><p>Nenhum executor encontrado para esta data</p></div>';
+                return;
+            }
+
+            var totalAv = 0, totalCalia = 0, totalEbm = 0, totalGeral = 0, totalValor = 0, totalEmAnalise = 0;
+
+            var html = '<table class="executor-table"><thead><tr>' +
+                '<th>Executor</th>' +
+                '<th class="center" style="color:hsl(270,70%,55%);">AV</th>' +
+                '<th class="center" style="color:hsl(30,90%,50%);">CALIA</th>' +
+                '<th class="center" style="color:hsl(220,10%,50%);">EBM</th>' +
+                '<th class="center">Total</th>' +
+                '<th class="center">Analisadas</th>' +
+                '<th class="center">Valor</th>' +
+                '</tr></thead><tbody>';
+
+            executores.forEach(function(exec) {
+                totalAv += exec.av || 0;
+                totalCalia += exec.calia || 0;
+                totalEbm += exec.ebm || 0;
+                totalGeral += exec.total || 0;
+                totalValor += exec.valor || 0;
+                // Analisadas = total - emAnalise (valores do consolidado coluna M)
+                var analisadas = (exec.total || 0) - (exec.emAnalise || 0);
+                totalEmAnalise += analisadas;
+
+                html += '<tr>' +
+                    '<td class="executor-name">' + escapeHtml(exec.nome) + '</td>' +
+                    '<td class="count av">' + (exec.av || 0) + '</td>' +
+                    '<td class="count calia">' + (exec.calia || 0) + '</td>' +
+                    '<td class="count ebm">' + (exec.ebm || 0) + '</td>' +
+                    '<td class="count">' + (exec.total || 0) + '</td>' +
+                    '<td class="count">' + analisadas + '</td>' +
+                    '<td class="count">' + formatCurrency(exec.valor || 0) + '</td>' +
+                    '</tr>';
+            });
+
+            html += '<tr class="summary-row">' +
+                '<td>TOTAL</td>' +
+                '<td class="count av">' + totalAv + '</td>' +
+                '<td class="count calia">' + totalCalia + '</td>' +
+                '<td class="count ebm">' + totalEbm + '</td>' +
+                '<td class="count">' + totalGeral + '</td>' +
+                '<td class="count">' + totalEmAnalise + '</td>' +
+                '<td class="count">' + formatCurrency(totalValor) + '</td>' +
+                '</tr></tbody></table>';
+
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // GERADOR - Expande automaticamente ao digitar
+        // ==========================================
+        function debounceSearchGerador() {
+            clearTimeout(searchTimeoutGerador);
+            var valor = document.getElementById('valorBuscaGerador').value.trim();
+
+            // Expandir automaticamente ao digitar
+            var content = document.getElementById('geradorContent');
+            var card = document.getElementById('geradorCard');
+
+            if (valor.length > 0) {
+                content.classList.add('show');
+                card.classList.add('expanded');
+            } else {
+                content.classList.remove('show');
+                card.classList.remove('expanded');
+                document.getElementById('statusSaldoGerador').innerHTML = '';
+                document.getElementById('atestoInfoGerador').innerHTML = '';
+                document.getElementById('tableContainerGerador').innerHTML = '';
+                return;
+            }
+
+            searchTimeoutGerador = setTimeout(function() {
+                buscarDadosGerador(valor);
+            }, 400);
+        }
+
+        function buscarDadosGerador(valor) {
+            document.getElementById('loadingGerador').style.display = 'block';
+            document.getElementById('tableContainerGerador').innerHTML = '';
+
+            if (window.google && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(exibirTabelaGerador)
+                    .withFailureHandler(function(err) {
+                        document.getElementById('loadingGerador').style.display = 'none';
+                        document.getElementById('tableContainerGerador').innerHTML = '<p style="color:hsl(0,75%,45%);">Erro: ' + err.message + '</p>';
+                    })
+                    .filtrarControleDePagamento(valor);
+
+                google.script.run
+                    .withSuccessHandler(updateSaldoGerador)
+                    .getSaldoByPI(valor);
+            }
+        }
+
+        function updateSaldoGerador(result) {
+            var div = document.getElementById('statusSaldoGerador');
+            if (result && result.agencia && result.campanha) {
+                div.innerHTML = 'Agência: <strong style="color:hsl(217,90%,45%);">' + result.agencia + '</strong>, Campanha: <strong style="color:hsl(217,90%,45%);">' + result.campanha + '</strong>, Saldo Atual: <strong style="color:hsl(217,90%,45%);">' + formatCurrency(result.saldo) + '</strong>';
+            } else {
+                div.innerHTML = '<span style="color:hsl(0,75%,45%);font-weight:bold;">Agência/Campanha não encontradas.</span>';
+            }
+        }
+
+        function exibirTabelaGerador(data) {
+            document.getElementById('loadingGerador').style.display = 'none';
+            var container = document.getElementById('tableContainerGerador');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p style="color:hsl(0,75%,45%);">Nenhuma Nota Fiscal encontrada.</p>';
+                return;
+            }
+
+            var totalLiquido = 0;
+            var nfList = [];
+            data.forEach(function(r) {
+                totalLiquido += Number(r.valor_nf) || 0;
+                if (r.nf && r.nf !== '-') nfList.push(r.nf);
+            });
+
+            nfList = [...new Set(nfList)].sort(function(a, b) { return Number(a) - Number(b); });
+            var nfTexto = nfList.length > 1 ? nfList.slice(0, -1).join(', ') + ' e ' + nfList[nfList.length - 1] : nfList[0];
+
+            document.getElementById('atestoInfoGerador').innerHTML = '<div style="background:hsl(217,90%,97%);padding:12px 16px;border-radius:8px;border:1px solid hsl(217,90%,90%);"><strong style="color:hsl(217,90%,45%);">Texto para atesto:</strong> ' + nfTexto + ', no montante total de <strong>' + formatCurrency(totalLiquido) + '</strong></div>';
+
+            var html = '<table class="executor-table" style="margin-top:20px;"><thead><tr><th>Ord.</th><th>NF</th><th>Veículo/Fornecedor</th><th>CNPJ</th><th>Tipo de Mídia</th><th>Valor da NF</th></tr></thead><tbody>';
+            data.forEach(function(r, i) {
+                html += '<tr><td>' + (i + 1) + '</td><td>' + (r.nf || '-') + '</td><td>' + (r.veiculo_forn || '-') + '</td><td>' + (r.cnpj || '-') + '</td><td>' + (r.tipo_midia || '-') + '</td><td class="valor">' + formatCurrency(r.valor_nf) + '</td></tr>';
+            });
+            html += '<tr class="summary-row"><td colspan="5"><strong>TOTAL</strong></td><td class="valor"><strong>' + formatCurrency(totalLiquido) + '</strong></td></tr></tbody></table>';
+
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // LOAD DATA
+        // ==========================================
+        function loadData() {
+            showLoading(true);
+            showError('');
+
+            if (!window.google || !google.script || !google.script.run) {
+                showLoading(false);
+                showError('Este painel precisa ser aberto pela URL do Web App do Google Apps Script.');
+                renderEmProcesso();
+                renderAtestadas();
+                renderPagas();
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    showLoading(false);
+                    dados = result || { emProcesso: [], atestadas: [], pagas: [] };
+                    renderEmProcesso();
+                    renderAtestadas();
+                    renderPagas();
+                })
+                .withFailureHandler(function(err) {
+                    showLoading(false);
+                    showError('Erro ao carregar dados: ' + (err && err.message ? err.message : String(err)));
+                    renderEmProcesso();
+                    renderAtestadas();
+                    renderPagas();
+                })
+                .getDados();
+        }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            renderEmProcesso();
+            renderAtestadas();
+            renderPagas();
+            loadData();
+            carregarExecutorDatasDisponiveis();
+        });
+    </script>
+</body>
+</html>
