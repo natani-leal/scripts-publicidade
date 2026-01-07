@@ -7,7 +7,6 @@ var SHEET_CONSOLIDADO = 'Consolidado';
 var CACHE_KEY = 'FINALIZADAS_CACHE';
 var CACHE_DURATION = 21600; // 6 horas em segundos
 
-
 // ============================================
 // HELPERS
 // ============================================
@@ -18,7 +17,6 @@ function getSheet_() {
   return sheet;
 }
 
-
 function getSheetConsolidado_() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(SHEET_CONSOLIDADO);
@@ -26,18 +24,15 @@ function getSheetConsolidado_() {
   return sheet;
 }
 
-
 function normalizeString_(str) {
   return String(str ?? "").trim().toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-
 function normalizeHeader_(v) {
   return String(v ?? "").trim().toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
-
 
 function colIndex_(headers, name) {
   var target = normalizeHeader_(name);
@@ -47,7 +42,6 @@ function colIndex_(headers, name) {
   throw new Error('Cabeçalho não encontrado: "' + name + '"');
 }
 
-
 function optionalColIndex_(headers, name) {
   try {
     return colIndex_(headers, name);
@@ -55,7 +49,6 @@ function optionalColIndex_(headers, name) {
     return -1;
   }
 }
-
 
 function firstColIndex_(headers, names) {
   for (var i = 0; i < names.length; i++) {
@@ -65,14 +58,12 @@ function firstColIndex_(headers, names) {
   return -1;
 }
 
-
 function colIndexObservacoes_(headers) {
   var idx = firstColIndex_(headers, ['Observações', 'Observacoes', 'Observação', 'Observacao']);
   if (idx >= 0) return idx;
   // fallback fixo: coluna AI (A=0 → AI=34)
   return 34;
 }
-
 
 function buildColMap_(headers) {
   return {
@@ -117,7 +108,6 @@ function buildColMap_(headers) {
   };
 }
 
-
 function criarAgenciaVazia_() {
   return {
     processo: '',
@@ -136,7 +126,6 @@ function criarAgenciaVazia_() {
   };
 }
 
-
 function normalizeAgencia_(agRaw) {
   var ag = normalizeString_(agRaw);
   ag = ag.replace(/[^a-z0-9]/g, '');
@@ -148,18 +137,16 @@ function normalizeAgencia_(agRaw) {
   return String(agRaw ?? '').trim();
 }
 
-
 function formatDateValue_(value) {
   if (!value) return '';
   if (value instanceof Date) {
     var day = ('0' + value.getDate()).slice(-2);
     var month = ('0' + (value.getMonth() + 1)).slice(-2);
-    var year = value.getFullYear();
+    var year = String(value.getFullYear()).slice(-2); // dd/mm/yy
     return day + '/' + month + '/' + year;
   }
   return String(value);
 }
-
 
 // ============================================
 // CACHE PARA CAMPANHAS FINALIZADAS
@@ -177,7 +164,6 @@ function getCachedFinalizadas_() {
   return null;
 }
 
-
 function setCachedFinalizadas_(data) {
   var cache = CacheService.getScriptCache();
   try {
@@ -186,7 +172,6 @@ function setCachedFinalizadas_(data) {
     Logger.log('Erro ao salvar cache: ' + e.message);
   }
 }
-
 
 function buildFinalizadasCache_() {
   var sheet = getSheet_();
@@ -236,13 +221,11 @@ function buildFinalizadasCache_() {
   return finalizadas;
 }
 
-
 function limparCache() {
   var cache = CacheService.getScriptCache();
   cache.remove(CACHE_KEY);
   Logger.log('Cache limpo com sucesso');
 }
-
 
 // ============================================
 // FUNÇÕES EXPOSTAS AO FRONTEND
@@ -252,7 +235,6 @@ function doGet() {
     .setTitle('Campanhas')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
-
 
 function getCampanhas() {
   try {
@@ -281,7 +263,6 @@ function getCampanhas() {
   }
 }
 
-
 function getTermos() {
   try {
     var sheet = getSheet_();
@@ -299,7 +280,6 @@ function getTermos() {
     throw e;
   }
 }
-
 
 function getTipos() {
   try {
@@ -319,11 +299,9 @@ function getTipos() {
   }
 }
 
-
 function getFases() {
   return ['Em Andamento', 'Finalizada'];
 }
-
 
 /**
  * Retorna campanhas organizadas por termo aditivo
@@ -335,44 +313,44 @@ function getCampanhasPorTermo() {
     var values = sheet.getDataRange().getValues();
     var headers = values[0];
     var COL = buildColMap_(headers);
-    
+
     // Map de termo -> { campanha -> ordem }
     var termosCampanhas = {};
-    
+
     for (var i = 1; i < values.length; i++) {
       var termo = values[i][COL.TERMO];
       var campanha = values[i][COL.CAMPANHA];
       var ordem = Number(values[i][COL.ORDEM]) || 0;
-      
+
       if (!termo || !campanha) continue;
-      
+
       if (!termosCampanhas[termo]) {
         termosCampanhas[termo] = {};
       }
-      
+
       if (!termosCampanhas[termo][campanha] || ordem > termosCampanhas[termo][campanha]) {
         termosCampanhas[termo][campanha] = ordem;
       }
     }
-    
+
     // Converter para o formato { termo: [campanhas ordenadas] }
     var resultado = {};
     var termosOrdenados = Object.keys(termosCampanhas).sort();
-    
+
     termosOrdenados.forEach(function(termo) {
       var campanhasMap = termosCampanhas[termo];
       var campanhasArr = Object.keys(campanhasMap).map(function(nome) {
         return { nome: nome, ordem: campanhasMap[nome] };
       });
-      
+
       // Ordenar campanhas por ordem decrescente
       campanhasArr.sort(function(a, b) {
         return b.ordem - a.ordem;
       });
-      
+
       resultado[termo] = campanhasArr.map(function(item) { return item.nome; });
     });
-    
+
     return resultado;
   } catch (e) {
     Logger.log('getCampanhasPorTermo erro: ' + e.message);
@@ -380,7 +358,16 @@ function getCampanhasPorTermo() {
   }
 }
 
-
+/**
+ * Retorna informações detalhadas de uma campanha
+ * Colunas AD a AI (exceto AE):
+ * AD = Processo Mãe (col 29)
+ * AE = Processo (col 30) - EXCLUÍDO
+ * AF = Autorização (col 31)
+ * AG = Início (col 32)
+ * AH = Fim (col 33)
+ * AI = Observações (col 34)
+ */
 function getCampanhaInfo(campanha) {
   try {
     var sheet = getSheet_();
@@ -406,9 +393,9 @@ function getCampanhaInfo(campanha) {
         if (!tipo) tipo = values[i][COL.TIPO] || '';
         if (!processoMae) processoMae = values[i][COL.PROCESSO_MAE] || '';
         if (!autorizacao) autorizacao = values[i][COL.AUTORIZACAO] || '';
-        if (!inicio) inicio = values[i][COL.INICIO] || '';
-        if (!fim) fim = values[i][COL.FIM] || '';
-        
+        if (!inicio) inicio = formatDateValue_(values[i][COL.INICIO]) || '';
+        if (!fim) fim = formatDateValue_(values[i][COL.FIM]) || '';
+
         // Fase baseada na situação
         if (!fase) {
           var situacao = normalizeString_(values[i][COL.SITUACAO]);
@@ -418,7 +405,7 @@ function getCampanhaInfo(campanha) {
             fase = 'Em Andamento';
           }
         }
-        
+
         // Descrição - tentar pegar de qualquer linha que tenha valor
         if (!descricao && COL.DESCRICAO >= 0) {
           var descVal = values[i][COL.DESCRICAO];
@@ -454,7 +441,6 @@ function getCampanhaInfo(campanha) {
   }
 }
 
-
 function getCampanhaFase_(values, COL, campanhaNorm) {
   var situacao = '';
 
@@ -467,7 +453,6 @@ function getCampanhaFase_(values, COL, campanhaNorm) {
 
   return 'Em Andamento';
 }
-
 
 function getCampanhasByFase(fase) {
   try {
@@ -498,7 +483,6 @@ function getCampanhasByFase(fase) {
   }
 }
 
-
 function getCampanhasByTermo(termo) {
   try {
     var sheet = getSheet_();
@@ -527,7 +511,6 @@ function getCampanhasByTermo(termo) {
   }
 }
 
-
 function getCampanhasByTipo(tipo) {
   try {
     var sheet = getSheet_();
@@ -555,7 +538,6 @@ function getCampanhasByTipo(tipo) {
     throw e;
   }
 }
-
 
 function getCampanhasNaoFinalizadas() {
   try {
@@ -589,7 +571,6 @@ function getCampanhasNaoFinalizadas() {
     throw e;
   }
 }
-
 
 function getDados(filtros) {
   try {
@@ -695,7 +676,6 @@ function getDados(filtros) {
   }
 }
 
-
 function getDadosPorCampanha(filtros) {
   try {
     var sheet = getSheet_();
@@ -789,7 +769,6 @@ function getDadosPorCampanha(filtros) {
   }
 }
 
-
 // ============================================
 // PAGAMENTOS - ABA CONSOLIDADO
 // ============================================
@@ -802,9 +781,9 @@ function getDadosPorCampanha(filtros) {
  *   M (12) = Status (PAGA)
  *   T (19) = Controle
  *   AB (27) = Valor em reais
- * 
+ *
  * Também busca o empenho da aba SaldoEmpenhos (coluna G) para calcular o saldo
- * 
+ *
  * @param {string} campanha - Nome da campanha
  * @returns {Object} { AV: { pagamentos: [], empenho: 0 }, Calia: {...}, EBM: {...} }
  */
@@ -813,91 +792,107 @@ function getPagamentosPorCampanha(campanha) {
     // Índices fixos das colunas do Consolidado
     var COL_CONSOLIDADO = {
       AGENCIA: 0,    // A
-      DATA: 1,       // B
+      DATA: 1,       // B (Data consolidado)
       CAMPANHA: 2,   // C
       STATUS: 12,    // M
+      ATESTO: 18,    // S (Data atesto)
       CONTROLE: 19,  // T
+      DATA_PAGO: 20, // U (Data pago)
       VALOR: 27      // AB
     };
-    
+
     var resultado = {
       AV: { pagamentos: [], empenho: 0 },
       Calia: { pagamentos: [], empenho: 0 },
       EBM: { pagamentos: [], empenho: 0 }
     };
-    
+
     var campanhaNorm = normalizeString_(campanha);
-    
+
     // 1. Buscar empenho da aba SaldoEmpenhos
     var sheetSaldo = getSheet_();
     var valuesSaldo = sheetSaldo.getDataRange().getValues();
     var headersSaldo = valuesSaldo[0];
     var COL = buildColMap_(headersSaldo);
-    
+
     for (var i = 1; i < valuesSaldo.length; i++) {
       var row = valuesSaldo[i];
       if (normalizeString_(row[COL.CAMPANHA]) !== campanhaNorm) continue;
-      
+
       var ag = normalizeAgencia_(row[COL.AGENCIA]);
       if (resultado[ag]) {
         resultado[ag].empenho += Number(row[COL.EMPENHO_TOTAL]) || 0;
       }
     }
-    
+
     // 2. Buscar pagamentos da aba Consolidado
     var sheetConsolidado = getSheetConsolidado_();
     var valuesConsolidado = sheetConsolidado.getDataRange().getValues();
-    
-    // Map para agrupar por controle: { agencia: { controle: { data, controle, qtd, valor, paga } } }
+
+    // Map para agrupar por controle: { agencia: { controle: { ... } } }
     var pagamentosMap = {
       AV: {},
       Calia: {},
       EBM: {}
     };
-    
+
     for (var i = 1; i < valuesConsolidado.length; i++) {
       var row = valuesConsolidado[i];
+      
+      // Filtrar apenas linhas onde coluna T (controle) está preenchida
+      var controle = String(row[COL_CONSOLIDADO.CONTROLE] || '').trim();
+      if (!controle) continue;
+      
       var rowCampanha = String(row[COL_CONSOLIDADO.CAMPANHA] || '').trim();
-      
       if (normalizeString_(rowCampanha) !== campanhaNorm) continue;
-      
+
       var agencia = normalizeAgencia_(row[COL_CONSOLIDADO.AGENCIA]);
       if (!pagamentosMap[agencia]) continue;
-      
-      var data = formatDateValue_(row[COL_CONSOLIDADO.DATA]);
+
+      var dataAtesto = formatDateValue_(row[COL_CONSOLIDADO.ATESTO]);
+      var dataPago = formatDateValue_(row[COL_CONSOLIDADO.DATA_PAGO]);
       var controle = String(row[COL_CONSOLIDADO.CONTROLE] || '').trim();
       var status = normalizeString_(row[COL_CONSOLIDADO.STATUS]);
       var valor = Number(row[COL_CONSOLIDADO.VALOR]) || 0;
       var paga = (status === 'paga' || status === 'pago');
-      
-      var key = controle || 'sem_controle_' + i;
-      
+
+      var key = controle;
+
       if (!pagamentosMap[agencia][key]) {
         pagamentosMap[agencia][key] = {
-          data: data,
-          controle: controle || '-',
+          dataAtesto: dataAtesto,
+          dataPago: dataPago,
+          controle: controle,
           qtd: 0,
           valor: 0,
           paga: false
         };
       }
-      
+
       pagamentosMap[agencia][key].qtd += 1;
       pagamentosMap[agencia][key].valor += valor;
-      
+
+      // Atualizar datas se ainda não preenchidas
+      if (!pagamentosMap[agencia][key].dataAtesto && dataAtesto) {
+        pagamentosMap[agencia][key].dataAtesto = dataAtesto;
+      }
+      if (!pagamentosMap[agencia][key].dataPago && dataPago) {
+        pagamentosMap[agencia][key].dataPago = dataPago;
+      }
+
       // Se qualquer linha do controle está paga, marcar como pago
       if (paga) {
         pagamentosMap[agencia][key].paga = true;
       }
     }
-    
+
     // 3. Converter map para array ordenado por data
     ['AV', 'Calia', 'EBM'].forEach(function(ag) {
       var pagamentos = [];
       for (var key in pagamentosMap[ag]) {
         pagamentos.push(pagamentosMap[ag][key]);
       }
-      
+
       // Ordenar por data (mais antigas primeiro)
       pagamentos.sort(function(a, b) {
         if (!a.data) return 1;
@@ -909,10 +904,10 @@ function getPagamentosPorCampanha(campanha) {
         var dateB = partsB.length === 3 ? new Date(partsB[2], partsB[1] - 1, partsB[0]) : new Date(0);
         return dateA - dateB;
       });
-      
+
       resultado[ag].pagamentos = pagamentos;
     });
-    
+
     return resultado;
   } catch (e) {
     Logger.log('getPagamentosPorCampanha erro: ' + e.message);
@@ -923,7 +918,6 @@ function getPagamentosPorCampanha(campanha) {
     };
   }
 }
-
 
 // ============================================
 // EMPENHOS - ABA EMPENHOS
@@ -937,7 +931,7 @@ function getPagamentosPorCampanha(campanha) {
  *   D (3) = Empenho
  *   E (4) = Data
  *   F (5) = Valor
- * 
+ *
  * @param {string} campanha - Nome da campanha
  * @returns {Object} { AV: [ { sei, empenho, data, valor }, ... ], Calia: [...], EBM: [...] }
  */
@@ -949,23 +943,23 @@ function getEmpenhosPorCampanha(campanha) {
       Logger.log('Aba Empenhos não encontrada');
       return { AV: [], Calia: [], EBM: [] };
     }
-    
+
     var values = sheet.getDataRange().getValues();
     var resultado = { AV: [], Calia: [], EBM: [] };
     var campanhaNorm = normalizeString_(campanha);
-    
+
     // Pular cabeçalho (linha 0)
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
       var rowCampanha = String(row[0] || '').trim();
-      
+
       if (normalizeString_(rowCampanha) !== campanhaNorm) continue;
-      
+
       var agencia = normalizeAgencia_(row[1]);
       if (!resultado[agencia]) continue;
-      
+
       var valor = Number(row[5]) || 0;
-      
+
       resultado[agencia].push({
         sei: String(row[2] || '').trim(),
         empenho: String(row[3] || '').trim(),
@@ -973,7 +967,7 @@ function getEmpenhosPorCampanha(campanha) {
         valor: valor
       });
     }
-    
+
     // Ordenar por data
     ['AV', 'Calia', 'EBM'].forEach(function(ag) {
       resultado[ag].sort(function(a, b) {
@@ -986,14 +980,13 @@ function getEmpenhosPorCampanha(campanha) {
         return dateA - dateB;
       });
     });
-    
+
     return resultado;
   } catch (e) {
     Logger.log('getEmpenhosPorCampanha erro: ' + e.message);
     return { AV: [], Calia: [], EBM: [] };
   }
 }
-
 
 // ============================================
 // MENU
@@ -1005,7 +998,6 @@ function onOpen() {
     .addItem('Limpar Cache', 'limparCache')
     .addToUi();
 }
-
 
 function abrirDashboard() {
   var html = HtmlService.createHtmlOutputFromFile('Index')
