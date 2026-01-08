@@ -353,6 +353,7 @@ function getDadosExecutores(dataStr) {
 // ======================================================================
 // GERADOR DE TABELA DE CONTROLE DE PAGAMENTO
 // ======================================================================
+
 const SHEET_NAME_EMPENHOS = 'SaldoEmpenhos';
 const SHEET_NAME_CERTIDOES = 'Certidões';
 
@@ -369,16 +370,17 @@ function filtrarControleDePagamento(valorBusca) {
       valorT = valorT.trim();
 
       if (!r[0] && !r[2] && !r[5]) continue;
+
       if (buscaStr === "" || valorT.includes(buscaStr)) {
         out.push({
           agencia_principal: String(r[COL.AGENCIA] || ""),
           valor_nf_agencia: (r[6] === "" || r[6] == null) ? 0 : Number(r[6]),
           veiculo_forn: String(r[COL.VEICULO] || ""),
-          cnpj: String(r[COL.CNPJ] || ""),
+          cnpj: String(r[10] || ""),
           tipo_midia: String(r[COL.TIPO_MIDIA] || ""),
           valor_nf: (r[COL.VALOR] === "" || r[COL.VALOR] == null) ? 0 : Number(r[COL.VALOR]),
           nf: String(r[COL.NF] || ""),
-          glosa: (r[COL.GLOSA] === "" || r[COL.GLOSA] == null) ? 0 : Number(r[COL.GLOSA]),
+          glosa: (r[14] === "" || r[14] == null) ? 0 : Number(r[14]),
         });
       }
     }
@@ -392,7 +394,6 @@ function getSaldoByPI(valorBusca) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const buscaStr = String(valorBusca || "").trim().toUpperCase();
   const defaultReturn = { saldo: 0, agencia: null, campanha: null };
-
   if (!buscaStr) return defaultReturn;
 
   let agencia = null;
@@ -443,7 +444,6 @@ function getSaldoByPI(valorBusca) {
 function getCertidoesByAgencia(agenciaBusca) {
   const defaultReturn = { rfb: null, sefaz_df: null, fgts: null, tst: null, link: null, agencia_cert: null };
   const buscaAgencia = String(agenciaBusca || "").trim().toUpperCase();
-
   if (!buscaAgencia) return defaultReturn;
 
   try {
@@ -455,7 +455,6 @@ function getCertidoesByAgencia(agenciaBusca) {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const agenciaCertidao = String(r[0] || "").trim().toUpperCase();
-
       if (agenciaCertidao.includes(buscaAgencia) || buscaAgencia.includes(agenciaCertidao)) {
         return {
           agencia_cert: String(r[0] || ""),
