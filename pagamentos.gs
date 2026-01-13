@@ -268,88 +268,6 @@ function getDados() {
   };
 }
 
-// ==========================================
-// EXECUTORES - Com valor (coluna AB)
-// ==========================================
-function getDadosExecutores(dataStr) {
-  var data = getAllData_();
-  var datas = {};
-  var executores = {};
-
-  // Coletar datas da coluna B (DATA_CONSOLIDADO)
-  data.forEach(function(row) {
-    var dataNota = row[COL.DATA_CONSOLIDADO];
-    if (dataNota && dataNota instanceof Date) {
-      var key = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      if (key) datas[key] = true;
-    }
-  });
-
-  var datasOrdenadas = Object.keys(datas).sort().reverse();
-  var dataSelecionada = dataStr || datasOrdenadas[0];
-
-  if (!dataSelecionada) {
-    return { datasDisponiveis: datasOrdenadas, executores: [], dataSelecionada: null };
-  }
-
-  data.forEach(function(row) {
-    var dataNota = row[COL.DATA_CONSOLIDADO];
-    if (!dataNota || !(dataNota instanceof Date)) return;
-    var dataNotaStr = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    if (dataNotaStr !== dataSelecionada) return;
-
-    var executor = String(row[COL.EXECUTOR] || '').trim() || 'SEM EXECUTOR';
-    var agencia = String(row[COL.AGENCIA] || '').toUpperCase().trim();
-    var statusRaw = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
-    var nf = String(row[COL.NF] || '').trim();
-    var valor = parseFloat(row[COL.VALOR]) || 0;
-
-    var emAnalise = statusRaw.indexOf('analise') !== -1 || statusRaw.indexOf('análise') !== -1;
-    var analisada = statusRaw !== '' && !emAnalise;
-
-    if (!executores[executor]) {
-      executores[executor] = {
-        nome: executor,
-        av: 0,
-        calia: 0,
-        ebm: 0,
-        total: 0,
-        emAnalise: 0,
-        analisadas: 0,
-        valor: 0,
-        nfsAv: [],
-        nfsCalia: [],
-        nfsEbm: []
-      };
-    }
-
-    if (agencia.indexOf('AV') !== -1 || agencia === 'AV') {
-      executores[executor].av++;
-      if (nf) executores[executor].nfsAv.push(nf);
-    } else if (agencia.indexOf('CALIA') !== -1) {
-      executores[executor].calia++;
-      if (nf) executores[executor].nfsCalia.push(nf);
-    } else if (agencia.indexOf('EBM') !== -1) {
-      executores[executor].ebm++;
-      if (nf) executores[executor].nfsEbm.push(nf);
-    }
-
-    executores[executor].total++;
-    executores[executor].valor += valor;
-    if (emAnalise) executores[executor].emAnalise++;
-    if (analisada) executores[executor].analisadas++;
-  });
-
-  var result = Object.values(executores);
-  result.sort(function(a, b) { return b.total - a.total; });
-
-  return {
-    datasDisponiveis: datasOrdenadas,
-    executores: result,
-    dataSelecionada: dataSelecionada
-  };
-}
-
 // ======================================================================
 // GERADOR DE TABELA DE CONTROLE DE PAGAMENTO
 // ======================================================================
@@ -480,4 +398,112 @@ function formatSheetDate_(dateValue) {
     return `${d}/${m}/${y}`;
   }
   return String(dateValue || 'N/A');
+}
+// ==========================================
+// FUNÇÃO PARA EXECUTORES - SUPORTE A MÚLTIPLAS DATAS
+// ==========================================
+function getDadosExecutores(datasArray) {
+  var data = getAllData_();
+  var datas = {};
+  var executores = {};
+  
+  // Converter datasArray para objeto para busca rápida
+  var datasFiltro = {};
+  if (Array.isArray(datasArray)) {
+    datasArray.forEach(function(d) {
+      datasFiltro[String(d)] = true;
+    });
+  } else if (datasArray) {
+    datasFiltro[String(datasArray)] = true;
+  }
+  var filtrarPorData = Object.keys(datasFiltro).length > 0;
+
+  // Coletar todas as datas disponíveis da coluna B (DATA_CONSOLIDADO)
+  data.forEach(function(row) {
+    var dataNota = parseDate_(row[COL.DATA_CONSOLIDADO]);
+    if (dataNota) {
+      var key = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      if (key) datas[key] = true;
+    }
+  });
+
+  var datasOrdenadas = Object.keys(datas).sort().reverse();
+  
+  // Se nenhuma data foi selecionada, usar a mais recente
+  if (!filtrarPorData && datasOrdenadas.length > 0) {
+    datasFiltro[datasOrdenadas[0]] = true;
+    filtrarPorData = true;
+  }
+
+  // Processar linhas
+  data.forEach(function(row) {
+    var dataNota = parseDate_(row[COL.DATA_CONSOLIDADO]);
+    if (!dataNota) return;
+    
+    var dataNotaStr = Utilities.formatDate(dataNota, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    if (filtrarPorData && !datasFiltro[dataNotaStr]) return;
+
+    var executor = String(row[COL.EXECUTOR] || '').trim() || 'SEM EXECUTOR';
+    var agencia = String(row[COL.AGENCIA] || '').toUpperCase().trim();
+    var statusRaw = String(row[COL.STATUS_PAG] || '').toLowerCase().trim();
+    var nf = String(row[COL.NF] || '').trim();
+    var valor = Number(row[COL.VALOR]) || 0; // AB (27)
+
+
+    var emAnalise = statusRaw.indexOf('analise') !== -1 || statusRaw.indexOf('análise') !== -1;
+    var analisada = statusRaw !== '' && !emAnalise;
+
+    if (!executores[executor]) {
+      executores[executor] = {
+        nome: executor,
+        av: 0, calia: 0, ebm: 0,
+        total: 0, emAnalise: 0, analisadas: 0, valor: 0,
+        nfsAv: [], nfsCalia: [], nfsEbm: []
+      };
+    }
+
+    if (agencia.indexOf('AV') !== -1 || agencia === 'AV') {
+      executores[executor].av++;
+      if (nf) executores[executor].nfsAv.push(nf);
+    } else if (agencia.indexOf('CALIA') !== -1) {
+      executores[executor].calia++;
+      if (nf) executores[executor].nfsCalia.push(nf);
+    } else if (agencia.indexOf('EBM') !== -1) {
+      executores[executor].ebm++;
+      if (nf) executores[executor].nfsEbm.push(nf);
+    }
+
+    executores[executor].total++;
+    executores[executor].valor += valor;
+    if (emAnalise) executores[executor].emAnalise++;
+    if (analisada) executores[executor].analisadas++;
+  });
+
+  var result = Object.values(executores);
+  result.sort(function(a, b) { return b.total - a.total; });
+
+  return {
+    datasDisponiveis: datasOrdenadas,
+    executores: result,
+    dataSelecionada: Object.keys(datasFiltro)
+  };
+}
+
+// Helper para converter texto ou Date para objeto Date
+function parseDate_(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  var str = String(val).trim();
+  // Formato DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+    var p = str.split('/');
+    return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+  }
+  // Formato YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return new Date(str);
+  }
+  // Tentar parse genérico
+  var d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
 }
