@@ -382,9 +382,6 @@
         .executor-table tr:hover td { background: hsl(220, 20%, 98%); }
         .executor-table .executor-name { font-weight: 600; color: hsl(220, 15%, 30%); vertical-align: middle; }
         .executor-table .count { text-align: center; font-weight: 400; vertical-align: middle; color: hsl(220, 10%, 50%); }
-        .executor-table .count.av { color: hsl(270, 70%, 55%); }
-        .executor-table .count.calia { color: hsl(30, 90%, 50%); }
-        .executor-table .count.ebm { color: hsl(220, 10%, 50%); }
         .executor-table .valor {
             font-weight: 400;
             color: hsl(220, 10%, 50%);
@@ -395,9 +392,13 @@
             text-align: left;
             font-size: 0.75rem;
             line-height: 1.6;
+            max-width: 200px;
+            word-wrap: break-word;
+            white-space: normal;
         }
         .executor-table .notas-cell .nota-line {
-            white-space: nowrap;
+            white-space: normal;
+            word-break: break-word;
         }
         .executor-table .summary-row {
             background: hsl(220, 20%, 97%) !important;
@@ -623,12 +624,9 @@
             letter-spacing: 0.3px;
             color: #000;
         }
-        .controle-pagamento-table tr:last-child td {
-            font-weight: 700;
+        .controle-pagamento-table tbody tr:last-child td {
             background: white;
-        }
-        .controle-pagamento-table tr:last-child td:first-child {
-            text-align: left;
+            border-bottom: 1px solid #000;
         }
         .controle-pagamento-table .saldo-dash {
             color: hsl(220, 10%, 50%);
@@ -694,7 +692,7 @@
                 <h2 class="section-title">
                     <span class="dot"></span>
                     Divisão de Notas por Executor
-                    <svg id="executorCollapseIcon" class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg id="executorCollapseIcon" class="collapse-icon open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </h2>
@@ -708,7 +706,7 @@
                     <div id="dateDropdownMenu" class="date-dropdown-menu"></div>
                 </div>
             </div>
-            <div id="executorCollapsibleContent" class="collapsible-content open">
+            <div id="executorCollapsibleContent" class="collapsible-content">
                 <div id="executorTableContainer">
                     <div class="empty-state">
                         <div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;"></div>
@@ -747,12 +745,12 @@
             </div>
         </div>
 
-        <!-- Notas em Processo de Pagamento -->
+        <!-- Pagamentos em andamento -->
         <div class="section processo">
             <div class="section-header">
                 <h2 class="section-title">
                     <span class="dot"></span>
-                    Notas em Processo de Pagamento
+                    Pagamentos em andamento
                 </h2>
                 <span id="count-processo" class="count-badge orange">0 processo(s)</span>
             </div>
@@ -845,7 +843,7 @@
         var searchTimeoutGerador = null;
         var selectedDates = [];
         var datasDisponiveis = [];
-        var executorSectionOpen = true;
+        var executorSectionOpen = false;
 
         // ==========================================
         // FUNÇÕES UTILITÁRIAS
@@ -875,25 +873,50 @@
 
         function formatDate(date) {
             if (!date) return { main: '-', sub: '' };
-            var d = new Date(date);
+
+            var d;
+            if (date instanceof Date) {
+                d = date;
+            } else {
+                var s = String(date).trim();
+
+                // ISO: YYYY-MM-DD
+                if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+                    d = new Date(s);
+                }
+                // BR: DD/MM/YYYY
+                else if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+                    var p = s.split('/');
+                    d = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+                }
+                // fallback
+                else {
+                    d = new Date(s);
+                }
+            }
+
             if (isNaN(d)) return { main: '-', sub: '' };
+
             var dia = String(d.getDate()).padStart(2, '0');
             var mes = String(d.getMonth() + 1).padStart(2, '0');
             var ano = d.getFullYear();
             var diaSemana = DIAS_SEMANA[d.getDay()];
+
             var hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
             var dataComp = new Date(d);
             dataComp.setHours(0, 0, 0, 0);
+
             var diffMs = hoje - dataComp;
             var diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            var agoText = '';
-            if (diffDias === 0) agoText = 'hoje';
-            else if (diffDias === 1) agoText = '1 dia';
-            else if (diffDias > 1) agoText = diffDias + ' dias';
+
+            // sempre "há x dias"
+            if (diffDias < 0) diffDias = 0;
+            var agoText = diffDias === 1 ? 'há 1 dia' : 'há ' + diffDias + ' dias';
+
             return {
                 main: dia + '/' + mes + '/' + ano,
-                sub: diaSemana + (agoText ? ' • ' + agoText : '')
+                sub: diaSemana + ' • ' + agoText
             };
         }
 
@@ -911,9 +934,20 @@
             var dia = String(d.getDate()).padStart(2, '0');
             var mes = String(d.getMonth() + 1).padStart(2, '0');
             var ano = d.getFullYear();
+            var diaSemana = DIAS_SEMANA[d.getDay()];
+            var hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            var dataComp = new Date(d);
+            dataComp.setHours(0, 0, 0, 0);
+            var diffMs = hoje - dataComp;
+            var diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            var agoText = '';
+            if (diffDias === 0) agoText = 'hoje';
+            else if (diffDias === 1) agoText = 'há 1 dia';
+            else if (diffDias > 1) agoText = 'há ' + diffDias + ' dias';
             return {
                 main: dia + '/' + mes + '/' + ano,
-                sub: mesRef ? 'Ref: ' + mesRef : ''
+                sub: diaSemana + (agoText ? ' • ' + agoText : '')
             };
         }
 
@@ -1070,13 +1104,14 @@
                 totalQtdPendente += item.qtdPendente || 0;
                 totalQtdDiligencia += item.qtdDiligencia || 0;
 
-                // Pendências / Inconformidades com tooltip
+                // Pendências / Inconformidades com tooltip e nome do executor
                 var pendentesHtml = '';
                 if (item.pendentes && item.pendentes.length > 0) {
                     pendentesHtml = item.pendentes.map(function(p) {
                         var tooltip = p.motivo ? ' title="' + escapeHtml(p.motivo) + '"' : '';
                         var tipoMidia = p.tipoMidia ? ' | ' + p.tipoMidia : '';
-                        return '<div class="pendente-item"' + tooltip + '><span class="pendente-info">NF: ' + (p.nf || '-') + tipoMidia + ' | ' + (p.veiculo || '-') + '</span></div>';
+                        var executor = p.executor ? ' | <span style="color:hsl(220,15%,40%);font-weight:500;">' + escapeHtml(p.executor) + '</span>' : '';
+                        return '<div class="pendente-item"' + tooltip + '><span class="pendente-info">NF: ' + (p.nf || '-') + tipoMidia + ' | ' + (p.veiculo || '-') + executor + '</span></div>';
                     }).join('');
                 }
 
@@ -1084,7 +1119,8 @@
                     pendentesHtml += item.diligencias.map(function(d) {
                         var tooltip = d.motivo ? ' title="' + escapeHtml(d.motivo) + '"' : '';
                         var tipoMidia = d.tipoMidia ? ' | ' + d.tipoMidia : '';
-                        return '<div class="diligencia-item"' + tooltip + '><span>NF: ' + (d.nf || '-') + tipoMidia + ' (diligência)</span></div>';
+                        var executor = d.executor ? ' | <span style="color:hsl(220,15%,40%);font-weight:500;">' + escapeHtml(d.executor) + '</span>' : '';
+                        return '<div class="diligencia-item"' + tooltip + '><span>NF: ' + (d.nf || '-') + tipoMidia + ' (diligência)' + executor + '</span></div>';
                     }).join('');
                 }
 
@@ -1264,139 +1300,178 @@
         }
 
         function carregarExecutorDatasDisponiveis() {
+            var container = document.getElementById('executorTableContainer');
+            var textEl = document.getElementById('selectedDatesText');
+
             if (!window.google || !google.script || !google.script.run) {
-                document.getElementById('selectedDatesText').textContent = 'Não disponível';
+                textEl.textContent = 'GAS não disponível';
+                container.innerHTML = '<div class="empty-state"><p style="color:hsl(220,10%,55%);">Esta seção só funciona no Google Apps Script.</p></div>';
                 return;
             }
 
+            container.innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;"></div><p>Carregando datas...</p></div>';
+
             google.script.run
                 .withSuccessHandler(function(result) {
-                    datasDisponiveis = result.datasDisponiveis || [];
+                    try {
+                        datasDisponiveis = result.datasDisponiveis || [];
 
-                    if (datasDisponiveis.length === 0) {
-                        document.getElementById('selectedDatesText').textContent = 'Nenhuma data disponível';
-                        return;
+                        if (datasDisponiveis.length === 0) {
+                            textEl.textContent = 'Nenhuma data disponível';
+                            container.innerHTML = '<div class="empty-state"><p>Nenhuma data disponível</p></div>';
+                            return;
+                        }
+
+                        // Ordenar datas (mais recente primeiro)
+                        function parseDateComparable(s) {
+                            var str = String(s || '').trim();
+                            if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str).getTime();
+                            if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                                var p = str.split('/');
+                                return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime();
+                            }
+                            return new Date(str).getTime() || 0;
+                        }
+
+                        datasDisponiveis.sort(function(a, b) {
+                            return parseDateComparable(b) - parseDateComparable(a);
+                        });
+
+                        // Pré-selecionar a data mais recente
+                        selectedDates = [datasDisponiveis[0]];
+                        renderDateDropdown();
+
+                        // Carregar executores da data selecionada
+                        carregarExecutoresPorDatas();
+                    } catch (e) {
+                        console.error('Erro ao processar datas:', e);
+                        textEl.textContent = 'Erro';
+                        container.innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro: ' + escapeHtml(e.message || e) + '</p></div>';
                     }
-
-                    // Selecionar a data mais recente por padrão (primeira da lista = mais recente)
-                    selectedDates = [datasDisponiveis[0]];
-                    renderDateDropdown();
-
-                    // Carregar executores da data mais recente
-                    renderExecutores(result);
                 })
                 .withFailureHandler(function(err) {
                     console.error('Erro ao carregar datas:', err);
-                    document.getElementById('selectedDatesText').textContent = 'Erro ao carregar';
+                    textEl.textContent = 'Erro ao carregar';
+                    container.innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro: ' + escapeHtml(err.message || err) + '</p></div>';
                 })
                 .getDadosExecutores(null);
         }
 
         function carregarExecutoresPorDatas() {
-            if (!window.google || !google.script || !google.script.run) return;
+            var container = document.getElementById('executorTableContainer');
+
+            if (!window.google || !google.script || !google.script.run) {
+                container.innerHTML = '<div class="empty-state"><p>GAS não disponível.</p></div>';
+                return;
+            }
             if (selectedDates.length === 0) {
-                document.getElementById('executorTableContainer').innerHTML = '<div class="empty-state"><p>Selecione pelo menos uma data</p></div>';
+                container.innerHTML = '<div class="empty-state"><p>Selecione pelo menos uma data</p></div>';
                 return;
             }
 
-            document.getElementById('executorTableContainer').innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;"></div><p>Carregando...</p></div>';
+            container.innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;margin:0 auto 12px;"></div><p>Carregando executores...</p></div>';
 
-            google.script.run
-                .withSuccessHandler(renderExecutores)
-                .withFailureHandler(function(err) {
-                    document.getElementById('executorTableContainer').innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro ao carregar: ' + err.message + '</p></div>';
+            var runner = google.script.run
+                .withSuccessHandler(function(result) {
+                    try {
+                        renderExecutores(result);
+                    } catch (e) {
+                        console.error('Erro ao renderizar:', e);
+                        container.innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro: ' + escapeHtml(e.message || e) + '</p></div>';
+                    }
                 })
-                .getDadosExecutoresPorDatas(selectedDates);
+                .withFailureHandler(function(err) {
+                    console.error('Erro ao carregar executores:', err);
+                    container.innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro: ' + escapeHtml(err.message || err) + '</p></div>';
+                });
+
+            // Compatibilidade: alguns projetos expõem apenas getDadosExecutores(dates)
+            if (typeof google.script.run.getDadosExecutoresPorDatas === 'function') {
+                runner.getDadosExecutoresPorDatas(selectedDates);
+            } else if (typeof google.script.run.getDadosExecutores === 'function') {
+                runner.getDadosExecutores(selectedDates);
+            } else {
+                container.innerHTML = '<div class="empty-state"><p style="color:hsl(0,75%,45%);">Erro: função do Apps Script não encontrada (getDadosExecutoresPorDatas / getDadosExecutores)</p></div>';
+            }
         }
 
         // ==========================================
-        // RENDER EXECUTORES - Com coluna Notas (AV/CALIA/EBM em linhas separadas)
+        // RENDER EXECUTORES - Usa dados já agrupados do GAS
+        // Campos: nome, av, calia, ebm, total, analisadas, emAnalise, valor, nfsAv, nfsCalia, nfsEbm
         // ==========================================
         function renderExecutores(result) {
             var container = document.getElementById('executorTableContainer');
-            var executores = result.executores || [];
-
+            
+            // O GAS retorna { executores: [...], datasDisponiveis: [...], dataSelecionada: "..." }
+            var executores = [];
+            if (result && Array.isArray(result.executores)) {
+                executores = result.executores;
+            } else if (Array.isArray(result)) {
+                executores = result;
+            }
+            
             if (executores.length === 0) {
                 container.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15h8M9 9h.01M15 9h.01"/></svg><p>Nenhum executor encontrado para esta data</p></div>';
                 return;
             }
-
-            var totalAv = 0, totalCalia = 0, totalEbm = 0, totalGeral = 0, totalValor = 0, totalEmAnalise = 0;
-            var allNotasAv = [], allNotasCalia = [], allNotasEbm = [];
-
+            
+            // Totais
+            var totais = { av: 0, calia: 0, ebm: 0, total: 0, analisadas: 0, valor: 0 };
+            
             var html = '<table class="executor-table"><thead><tr>' +
                 '<th>Executor</th>' +
                 '<th style="color:hsl(270,70%,55%);">AV</th>' +
-                '<th style="color:hsl(30,90%,50%);">CALIA</th>' +
+                '<th style="color:hsl(30,90%,50%);">Calia</th>' +
                 '<th style="color:hsl(220,10%,50%);">EBM</th>' +
                 '<th>Total</th>' +
-                '<th>Em Análise</th>' +
-                '<th>Notas</th>' +
+                '<th>Analisadas</th>' +
+                '<th style="max-width:200px;">Notas</th>' +
                 '<th>Valor</th>' +
                 '</tr></thead><tbody>';
-
-            executores.forEach(function(exec) {
-                totalAv += exec.av || 0;
-                totalCalia += exec.calia || 0;
-                totalEbm += exec.ebm || 0;
-                totalGeral += exec.total || 0;
-                totalValor += exec.valor || 0;
-                totalEmAnalise += exec.emAnalise || 0;
-
-                // Coletar notas para totais
-                if (exec.notasAv) allNotasAv = allNotasAv.concat(exec.notasAv);
-                if (exec.notasCalia) allNotasCalia = allNotasCalia.concat(exec.notasCalia);
-                if (exec.notasEbm) allNotasEbm = allNotasEbm.concat(exec.notasEbm);
-
-                // Montar notas em linhas separadas
+            
+            executores.forEach(function(e) {
+                totais.av += e.av || 0;
+                totais.calia += e.calia || 0;
+                totais.ebm += e.ebm || 0;
+                totais.total += e.total || 0;
+                totais.analisadas += e.analisadas || 0;
+                totais.valor += e.valor || 0;
+                
+                var nfsAv = e.nfsAv || e.notasAv || [];
+                var nfsCalia = e.nfsCalia || e.notasCalia || [];
+                var nfsEbm = e.nfsEbm || e.notasEbm || [];
+                
+                // Notas em linhas separadas - apenas nome da agência colorido
                 var notasHtml = '';
-                if (exec.notasAv && exec.notasAv.length > 0) {
-                    notasHtml += '<div class="nota-line"><span class="agencia-av">AV:</span> ' + exec.notasAv.join(', ') + '</div>';
-                }
-                if (exec.notasCalia && exec.notasCalia.length > 0) {
-                    notasHtml += '<div class="nota-line"><span class="agencia-calia">CALIA:</span> ' + exec.notasCalia.join(', ') + '</div>';
-                }
-                if (exec.notasEbm && exec.notasEbm.length > 0) {
-                    notasHtml += '<div class="nota-line"><span class="agencia-ebm">EBM:</span> ' + exec.notasEbm.join(', ') + '</div>';
-                }
+                if (nfsAv.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-av">AV:</span> ' + nfsAv.map(escapeHtml).join(', ') + '</div>';
+                if (nfsCalia.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-calia">Calia:</span> ' + nfsCalia.map(escapeHtml).join(', ') + '</div>';
+                if (nfsEbm.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-ebm">EBM:</span> ' + nfsEbm.map(escapeHtml).join(', ') + '</div>';
                 if (!notasHtml) notasHtml = '-';
-
+                
                 html += '<tr>' +
-                    '<td class="executor-name">' + escapeHtml(exec.nome) + '</td>' +
-                    '<td class="count av">' + (exec.av || 0) + '</td>' +
-                    '<td class="count calia">' + (exec.calia || 0) + '</td>' +
-                    '<td class="count ebm">' + (exec.ebm || 0) + '</td>' +
-                    '<td class="count">' + (exec.total || 0) + '</td>' +
-                    '<td class="count">' + (exec.emAnalise || 0) + '</td>' +
+                    '<td class="executor-name">' + escapeHtml(e.nome || '-') + '</td>' +
+                    '<td class="count">' + (e.av || 0) + '</td>' +
+                    '<td class="count">' + (e.calia || 0) + '</td>' +
+                    '<td class="count">' + (e.ebm || 0) + '</td>' +
+                    '<td class="count">' + (e.total || 0) + '</td>' +
+                    '<td class="count">' + (e.analisadas || 0) + '</td>' +
                     '<td class="notas-cell">' + notasHtml + '</td>' +
-                    '<td class="valor">' + formatCurrency(exec.valor || 0) + '</td>' +
+                    '<td class="valor">' + formatCurrency(e.valor || 0) + '</td>' +
                     '</tr>';
             });
-
-            // Totais - notas em linhas separadas
-            var totalNotasHtml = '';
-            if (allNotasAv.length > 0) {
-                totalNotasHtml += '<div class="nota-line"><span class="agencia-av">AV:</span> ' + allNotasAv.join(', ') + '</div>';
-            }
-            if (allNotasCalia.length > 0) {
-                totalNotasHtml += '<div class="nota-line"><span class="agencia-calia">CALIA:</span> ' + allNotasCalia.join(', ') + '</div>';
-            }
-            if (allNotasEbm.length > 0) {
-                totalNotasHtml += '<div class="nota-line"><span class="agencia-ebm">EBM:</span> ' + allNotasEbm.join(', ') + '</div>';
-            }
-            if (!totalNotasHtml) totalNotasHtml = '-';
-
+            
+            // Linha de totais - SEM notas
             html += '<tr class="summary-row">' +
                 '<td><strong>TOTAL</strong></td>' +
-                '<td class="count av"><strong>' + totalAv + '</strong></td>' +
-                '<td class="count calia"><strong>' + totalCalia + '</strong></td>' +
-                '<td class="count ebm"><strong>' + totalEbm + '</strong></td>' +
-                '<td class="count"><strong>' + totalGeral + '</strong></td>' +
-                '<td class="count"><strong>' + totalEmAnalise + '</strong></td>' +
-                '<td class="notas-cell">' + totalNotasHtml + '</td>' +
-                '<td class="valor"><strong>' + formatCurrency(totalValor) + '</strong></td>' +
+                '<td class="count"><strong>' + totais.av + '</strong></td>' +
+                '<td class="count"><strong>' + totais.calia + '</strong></td>' +
+                '<td class="count"><strong>' + totais.ebm + '</strong></td>' +
+                '<td class="count"><strong>' + totais.total + '</strong></td>' +
+                '<td class="count"><strong>' + totais.analisadas + '</strong></td>' +
+                '<td class="notas-cell">-</td>' +
+                '<td class="valor"><strong>' + formatCurrency(totais.valor) + '</strong></td>' +
                 '</tr></tbody></table>';
-
+            
             container.innerHTML = html;
         }
 
@@ -1488,46 +1563,81 @@
         function renderTabelaControle(data, saldoInicial, container) {
             var saldoAtual = saldoInicial;
             var totalLiquido = 0;
-            data.forEach(function(r) { totalLiquido += Number(r.valor_nf) || 0; });
-            var saldoFinal = saldoAtual - totalLiquido;
+            var totalGlosa = 0;
+            var hasAnyGlosa = false;
+            
+            // Verificar se há glosa em algum item
+            data.forEach(function(r) { 
+                totalLiquido += Number(r.valor_nf) || 0;
+                var glosa = Number(r.glosa) || 0;
+                if (glosa > 0) {
+                    hasAnyGlosa = true;
+                    totalGlosa += glosa;
+                }
+            });
+            
+            var valorAposGlosa = totalLiquido - totalGlosa;
+            var saldoFinal = saldoAtual - valorAposGlosa;
 
-            // Header com título e botão copiar
-            var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-                '<div class="controle-table-title" style="border:none;padding:0;background:none;">4. CONTROLE DE SALDO ORÇAMENTÁRIO</div>' +
+            // Botão copiar
+            var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">' +
                 '<button class="copy-btn" onclick="copiarTabela()">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
                 'Copiar Tabela' +
                 '</button></div>';
             
-            html += '<table class="controle-pagamento-table" id="tabelaControle"><thead><tr>' +
+            // Definir colspan baseado em se há glosa ou não
+            var colspanTitle = hasAnyGlosa ? 9 : 7;
+            var colspanTotal = hasAnyGlosa ? 5 : 5;
+            
+            html += '<table class="controle-pagamento-table" id="tabelaControle">' +
+                '<thead><tr><th colspan="' + colspanTitle + '" style="text-align:left;font-size:0.85rem;text-transform:none;letter-spacing:0;font-weight:bold;">4. CONTROLE DE SALDO ORÇAMENTÁRIO</th></tr>' +
+                '<tr style="font-weight:bold;">' +
                 '<th>Ord.</th>' +
                 '<th>NF</th>' +
                 '<th>Veículo/Fornecedor</th>' +
                 '<th>CNPJ</th>' +
                 '<th>Tipo de Mídia</th>' +
-                '<th>Valor da NF</th>' +
-                '<th>Saldo</th>' +
-                '</tr></thead><tbody>';
+                '<th>Valor da NF</th>';
+            
+            if (hasAnyGlosa) {
+                html += '<th>Glosa</th><th>Valor após Glosa</th>';
+            }
+            
+            html += '<th>Saldo</th></tr></thead><tbody>';
 
             data.forEach(function(r, index) {
-                saldoAtual = saldoAtual - (Number(r.valor_nf) || 0);
+                var glosa = Number(r.glosa) || 0;
                 html += '<tr>' +
                     '<td>' + (index + 1) + '</td>' +
                     '<td>' + (r.nf || '-') + '</td>' +
                     '<td>' + (r.veiculo_forn || r.veiculo || '-') + '</td>' +
                     '<td>' + (r.cnpj || '-') + '</td>' +
                     '<td>' + (r.tipo_midia || '-') + '</td>' +
-                    '<td>' + formatCurrency(r.valor_nf) + '</td>' +
-                    '<td>' + formatCurrency(saldoAtual) + '</td>' +
-                    '</tr>';
+                    '<td>' + formatCurrency(r.valor_nf) + '</td>';
+                
+                if (hasAnyGlosa) {
+                    html += '<td style="color:hsl(340,50%,35%);">' + (glosa > 0 ? formatCurrency(glosa) : '-') + '</td>';
+                    html += '<td class="saldo-dash">-</td>';
+                }
+                
+                html += '<td class="saldo-dash">-</td></tr>';
             });
 
-            // Linha de TOTAL com saldo final
-            html += '<tr>' +
-                '<td style="text-align:left;" colspan="5"><strong>TOTAL</strong></td>' +
-                '<td><strong>' + formatCurrency(totalLiquido) + '</strong></td>' +
-                '<td><strong>' + formatCurrency(saldoFinal) + '</strong></td>' +
-                '</tr>';
+            // Linha de TOTAL
+            if (hasAnyGlosa) {
+                html += '<tr>' +
+                    '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
+                    '<td>' + formatCurrency(totalLiquido) + '</td>' +
+                    '<td style="color:hsl(340,50%,35%);">' + formatCurrency(totalGlosa) + '</td>' +
+                    '<td><strong>' + formatCurrency(valorAposGlosa) + '</strong></td>';
+            } else {
+                html += '<tr>' +
+                    '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
+                    '<td><strong>' + formatCurrency(totalLiquido) + '</strong></td>';
+            }
+            
+            html += '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
 
             html += '</tbody></table>';
 
