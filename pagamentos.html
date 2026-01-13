@@ -48,6 +48,49 @@
             font-weight: 700;
             color: hsl(220, 25%, 25%);
         }
+        
+        /* Refresh Container - NOVO */
+        .refresh-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid hsl(220, 15%, 90%);
+        }
+        .btn-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: hsl(142, 70%, 45%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-refresh:hover {
+            background-color: hsl(142, 70%, 40%);
+            transform: translateY(-1px);
+        }
+        .btn-refresh:active {
+            transform: translateY(0);
+        }
+        .btn-refresh svg {
+            width: 16px;
+            height: 16px;
+        }
+        .ultima-atualizacao {
+            color: hsl(220, 10%, 50%);
+            font-size: 12px;
+        }
+        
         /* Section */
         .section {
             background: white;
@@ -116,7 +159,7 @@
             transition: all 0.2s ease;
             min-height: auto;
         }
-        
+
         /* Section executor - altura consistente com link-card quando colapsado */
         .section.executor {
             padding: 1rem 1.5rem;
@@ -410,7 +453,7 @@
             font-weight: 600;
         }
 
-        /* Status Select - Cinza claro padrão, apenas OB colorido */
+        /* Status Select - Cinza claro padrão, OB e SECON coloridos */
         .status-select {
             padding: 8px 12px;
             border: 1px solid hsl(220, 15%, 90%);
@@ -428,6 +471,10 @@
         .status-select.enviado {
             background: hsl(220, 20%, 98%);
             border-color: hsl(220, 15%, 90%);
+        }
+        .status-select.secon {
+            background: hsl(217, 90%, 95%);
+            border-color: hsl(217, 90%, 70%);
         }
         .status-select.ob {
             background: hsl(142, 70%, 93%);
@@ -545,7 +592,7 @@
         .section.processo td { text-align: center; vertical-align: middle; }
         .section.processo th { text-align: center; }
         .section.processo .controle { display: inline-block; }
-        .section.processo .data-cell { 
+        .section.processo .data-cell {
             text-align: center;
         }
         .section.processo .data-main {
@@ -684,6 +731,18 @@
                 </svg>
                 <h1>Planejamento de Pagamentos</h1>
             </div>
+        </div>
+        
+        <!-- NOVO: Barra de Atualização -->
+        <div class="refresh-container">
+            <span id="ultima-atualizacao" class="ultima-atualizacao"></span>
+            <button onclick="atualizarManualmente()" class="btn-refresh">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                Atualizar
+            </button>
         </div>
 
         <!-- Divisão de Notas por Executor - Collapsible -->
@@ -832,18 +891,55 @@
         // ==========================================
         var dados = { emProcesso: [], atestadas: [], pagas: [] };
         var DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        
+        // MODIFICADO: Adicionado SECON entre DAF e OB
         var STATUS_OPTIONS = [
             { value: 'montando', label: 'Montando' },
             { value: 'aguardando', label: 'Aguardando Assinaturas' },
             { value: 'dicom', label: 'DICOM' },
             { value: 'daf', label: 'DAF' },
+            { value: 'secon', label: 'SECON' },
             { value: 'ob', label: 'OB' },
             { value: 'enviado', label: 'Controle Retenções Enviado' }
         ];
+        
         var searchTimeoutGerador = null;
         var selectedDates = [];
         var datasDisponiveis = [];
         var executorSectionOpen = false;
+        
+        // NOVO: Variáveis para auto-refresh
+        var ultimaAtualizacao = new Date();
+        var autoRefreshInterval = null;
+        var AUTO_REFRESH_MS = 300000; // 5 minutos
+
+        // ==========================================
+        // FUNÇÕES DE AUTO-REFRESH - NOVO
+        // ==========================================
+        function iniciarAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(function() {
+                loadData();
+                ultimaAtualizacao = new Date();
+                atualizarIndicadorTempo();
+            }, AUTO_REFRESH_MS);
+        }
+
+        function atualizarManualmente() {
+            loadData();
+            ultimaAtualizacao = new Date();
+            atualizarIndicadorTempo();
+        }
+
+        function atualizarIndicadorTempo() {
+            var indicador = document.getElementById('ultima-atualizacao');
+            if (indicador) {
+                var hora = ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                indicador.textContent = 'Última atualização: ' + hora;
+            }
+        }
 
         // ==========================================
         // FUNÇÕES UTILITÁRIAS
@@ -1397,11 +1493,10 @@
 
         // ==========================================
         // RENDER EXECUTORES - Usa dados já agrupados do GAS
-        // Campos: nome, av, calia, ebm, total, analisadas, emAnalise, valor, nfsAv, nfsCalia, nfsEbm
         // ==========================================
         function renderExecutores(result) {
             var container = document.getElementById('executorTableContainer');
-            
+
             // O GAS retorna { executores: [...], datasDisponiveis: [...], dataSelecionada: "..." }
             var executores = [];
             if (result && Array.isArray(result.executores)) {
@@ -1409,15 +1504,15 @@
             } else if (Array.isArray(result)) {
                 executores = result;
             }
-            
+
             if (executores.length === 0) {
                 container.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15h8M9 9h.01M15 9h.01"/></svg><p>Nenhum executor encontrado para esta data</p></div>';
                 return;
             }
-            
+
             // Totais
             var totais = { av: 0, calia: 0, ebm: 0, total: 0, analisadas: 0, valor: 0 };
-            
+
             var html = '<table class="executor-table"><thead><tr>' +
                 '<th>Executor</th>' +
                 '<th style="color:hsl(270,70%,55%);">AV</th>' +
@@ -1428,7 +1523,7 @@
                 '<th style="max-width:200px;">Notas</th>' +
                 '<th>Valor</th>' +
                 '</tr></thead><tbody>';
-            
+
             executores.forEach(function(e) {
                 totais.av += e.av || 0;
                 totais.calia += e.calia || 0;
@@ -1436,18 +1531,18 @@
                 totais.total += e.total || 0;
                 totais.analisadas += e.analisadas || 0;
                 totais.valor += e.valor || 0;
-                
+
                 var nfsAv = e.nfsAv || e.notasAv || [];
                 var nfsCalia = e.nfsCalia || e.notasCalia || [];
                 var nfsEbm = e.nfsEbm || e.notasEbm || [];
-                
+
                 // Notas em linhas separadas - apenas nome da agência colorido
                 var notasHtml = '';
                 if (nfsAv.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-av">AV:</span> ' + nfsAv.map(escapeHtml).join(', ') + '</div>';
                 if (nfsCalia.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-calia">Calia:</span> ' + nfsCalia.map(escapeHtml).join(', ') + '</div>';
                 if (nfsEbm.length > 0) notasHtml += '<div class="nota-line"><span class="agencia-ebm">EBM:</span> ' + nfsEbm.map(escapeHtml).join(', ') + '</div>';
                 if (!notasHtml) notasHtml = '-';
-                
+
                 html += '<tr>' +
                     '<td class="executor-name">' + escapeHtml(e.nome || '-') + '</td>' +
                     '<td class="count">' + (e.av || 0) + '</td>' +
@@ -1459,7 +1554,7 @@
                     '<td class="valor">' + formatCurrency(e.valor || 0) + '</td>' +
                     '</tr>';
             });
-            
+
             // Linha de totais - SEM notas
             html += '<tr class="summary-row">' +
                 '<td><strong>TOTAL</strong></td>' +
@@ -1471,7 +1566,7 @@
                 '<td class="notas-cell">-</td>' +
                 '<td class="valor"><strong>' + formatCurrency(totais.valor) + '</strong></td>' +
                 '</tr></tbody></table>';
-            
+
             container.innerHTML = html;
         }
 
@@ -1530,6 +1625,9 @@
             }
         }
 
+        // Guarda saldo para uso posterior
+        var saldoAtualGlobal = 0;
+
         function exibirTabelaGerador(data) {
             document.getElementById('loadingGerador').style.display = 'none';
             var container = document.getElementById('tableContainerGerador');
@@ -1539,45 +1637,66 @@
                 return;
             }
 
-            var totalLiquido = 0;
+            // MODIFICADO: Calcular com base em glosa
+            var hasAnyGlosa = false;
+            var totalValorNfG = 0;  // Soma coluna G
+            var totalValorAposGlosa = 0;  // Soma coluna AK
             var nfList = [];
+
             data.forEach(function(r) {
-                totalLiquido += Number(r.valor_nf) || 0;
+                totalValorNfG += Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
+                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
+                totalValorAposGlosa += valorAposGlosa;
+                if (valorAposGlosa > 0) hasAnyGlosa = true;
                 if (r.nf && r.nf !== '-') nfList.push(r.nf);
             });
 
             nfList = [...new Set(nfList)].sort(function(a, b) { return Number(a) - Number(b); });
             var nfTexto = nfList.length > 1 ? nfList.slice(0, -1).join(', ') + ' e ' + nfList[nfList.length - 1] : nfList[0];
 
+            // MODIFICADO: Montante total usa valor_apos_glosa quando há glosa
+            var montanteTotal = hasAnyGlosa ? totalValorAposGlosa : totalValorNfG;
+
             // Texto para atesto - SEM fundo
-            document.getElementById('atestoInfoGerador').innerHTML = '<div class="atesto-text"><strong>Texto para atesto:</strong> ' + nfTexto + ', no montante total de <strong>' + formatCurrency(totalLiquido) + '</strong></div>';
+            document.getElementById('atestoInfoGerador').innerHTML = '<div class="atesto-text"><strong>Texto para atesto:</strong> ' + nfTexto + ', no montante total de <strong>' + formatCurrency(montanteTotal) + '</strong></div>';
 
             // Calcular saldo progressivo
             google.script.run
                 .withSuccessHandler(function(result) {
-                    renderTabelaControle(data, result ? result.saldo : 0, container);
+                    saldoAtualGlobal = result ? result.saldo : 0;
+                    renderTabelaControle(data, saldoAtualGlobal, container);
                 })
                 .getSaldoByPI(document.getElementById('valorBuscaGerador').value.trim());
         }
 
+        // MODIFICADO: renderTabelaControle com lógica de glosa corrigida
         function renderTabelaControle(data, saldoInicial, container) {
             var saldoAtual = saldoInicial;
-            var totalLiquido = 0;
-            var totalGlosa = 0;
             var hasAnyGlosa = false;
-            
-            // Verificar se há glosa em algum item
-            data.forEach(function(r) { 
-                totalLiquido += Number(r.valor_nf) || 0;
+
+            // Verificar se há glosa e calcular totais
+            var totalValorNfG = 0;  // Soma coluna G (Valor da NF)
+            var totalGlosa = 0;
+            var totalValorAposGlosa = 0;  // Soma coluna AK
+
+            data.forEach(function(r) {
+                totalValorNfG += Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
                 var glosa = Number(r.glosa) || 0;
-                if (glosa > 0) {
+                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
+                totalGlosa += glosa;
+                totalValorAposGlosa += valorAposGlosa;
+                if (valorAposGlosa > 0 || glosa > 0) {
                     hasAnyGlosa = true;
-                    totalGlosa += glosa;
                 }
             });
-            
-            var valorAposGlosa = totalLiquido - totalGlosa;
-            var saldoFinal = saldoAtual - valorAposGlosa;
+
+            // MODIFICADO: Saldo final quando há glosa = Saldo Atual - total valor após glosa
+            var saldoFinal;
+            if (hasAnyGlosa) {
+                saldoFinal = saldoAtual - totalValorAposGlosa;
+            } else {
+                saldoFinal = saldoAtual - totalValorNfG;
+            }
 
             // Botão copiar
             var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">' +
@@ -1585,11 +1704,11 @@
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
                 'Copiar Tabela' +
                 '</button></div>';
-            
+
             // Definir colspan baseado em se há glosa ou não
             var colspanTitle = hasAnyGlosa ? 9 : 7;
             var colspanTotal = hasAnyGlosa ? 5 : 5;
-            
+
             html += '<table class="controle-pagamento-table" id="tabelaControle">' +
                 '<thead><tr><th colspan="' + colspanTitle + '" style="text-align:left;font-size:0.85rem;text-transform:none;letter-spacing:0;font-weight:bold;">4. CONTROLE DE SALDO ORÇAMENTÁRIO</th></tr>' +
                 '<tr style="font-weight:bold;">' +
@@ -1599,45 +1718,49 @@
                 '<th>CNPJ</th>' +
                 '<th>Tipo de Mídia</th>' +
                 '<th>Valor da NF</th>';
-            
+
             if (hasAnyGlosa) {
                 html += '<th>Glosa</th><th>Valor após Glosa</th>';
             }
-            
+
             html += '<th>Saldo</th></tr></thead><tbody>';
 
             data.forEach(function(r, index) {
                 var glosa = Number(r.glosa) || 0;
+                // MODIFICADO: Exibir valor_nf_g (coluna G) na coluna "Valor da NF"
+                var valorNfExibir = Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
+                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
+
                 html += '<tr>' +
                     '<td>' + (index + 1) + '</td>' +
                     '<td>' + (r.nf || '-') + '</td>' +
                     '<td>' + (r.veiculo_forn || r.veiculo || '-') + '</td>' +
                     '<td>' + (r.cnpj || '-') + '</td>' +
                     '<td>' + (r.tipo_midia || '-') + '</td>' +
-                    '<td>' + formatCurrency(r.valor_nf) + '</td>';
-                
+                    '<td>' + formatCurrency(valorNfExibir) + '</td>';
+
                 if (hasAnyGlosa) {
                     html += '<td style="color:hsl(340,50%,35%);">' + (glosa > 0 ? formatCurrency(glosa) : '-') + '</td>';
-                    html += '<td class="saldo-dash">-</td>';
+                    html += '<td>' + (valorAposGlosa > 0 ? formatCurrency(valorAposGlosa) : '-') + '</td>';
                 }
-                
+
                 html += '<td class="saldo-dash">-</td></tr>';
             });
 
-            // Linha de TOTAL
+            // Linha de TOTAL - MODIFICADO
             if (hasAnyGlosa) {
                 html += '<tr>' +
                     '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
-                    '<td>' + formatCurrency(totalLiquido) + '</td>' +
+                    '<td>' + formatCurrency(totalValorNfG) + '</td>' +
                     '<td style="color:hsl(340,50%,35%);">' + formatCurrency(totalGlosa) + '</td>' +
-                    '<td><strong>' + formatCurrency(valorAposGlosa) + '</strong></td>';
+                    '<td><strong>' + formatCurrency(totalValorAposGlosa) + '</strong></td>' +
+                    '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
             } else {
                 html += '<tr>' +
                     '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
-                    '<td><strong>' + formatCurrency(totalLiquido) + '</strong></td>';
+                    '<td><strong>' + formatCurrency(totalValorNfG) + '</strong></td>' +
+                    '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
             }
-            
-            html += '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
 
             html += '</tbody></table>';
 
@@ -1652,21 +1775,20 @@
             range.selectNode(table);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-
-            try {
-                document.execCommand('copy');
-                var btns = document.querySelectorAll('.copy-btn');
-                btns.forEach(function(btn) {
-                    btn.innerHTML = '✓ Copiado!';
-                    setTimeout(function() {
-                        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copiar Tabela';
-                    }, 2000);
-                });
-            } catch (err) {
-                alert('Erro ao copiar');
-            }
-
+            document.execCommand('copy');
             window.getSelection().removeAllRanges();
+
+            // Feedback visual
+            var btn = event.target.closest('.copy-btn');
+            if (btn) {
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copiado!';
+                btn.style.background = 'hsl(142, 70%, 45%)';
+                setTimeout(function() {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }
         }
 
         // ==========================================
@@ -1675,7 +1797,7 @@
         document.addEventListener('click', function(e) {
             var menu = document.getElementById('dateDropdownMenu');
             var trigger = document.querySelector('.date-dropdown-trigger');
-            if (menu && !menu.contains(e.target) && !trigger.contains(e.target)) {
+            if (menu && trigger && !menu.contains(e.target) && !trigger.contains(e.target)) {
                 menu.classList.remove('open');
             }
         });
@@ -1686,6 +1808,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
             carregarExecutorDatasDisponiveis();
+            
+            // NOVO: Iniciar auto-refresh e indicador de tempo
+            iniciarAutoRefresh();
+            atualizarIndicadorTempo();
         });
     </script>
 </body>
