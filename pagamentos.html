@@ -48,49 +48,37 @@
             font-weight: 700;
             color: hsl(220, 25%, 25%);
         }
-        
-        /* Refresh Container - NOVO */
-        .refresh-container {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 12px 16px;
-            background: white;
-            border-radius: 12px;
-            border: 1px solid hsl(220, 15%, 90%);
-        }
-        .btn-refresh {
+        /* Refresh Button - Smaller, icon only */
+        .refresh-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background-color: hsl(142, 70%, 45%);
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
+            justify-content: center;
+            background: hsl(220, 20%, 97%);
+            border: 1px solid hsl(220, 15%, 90%);
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
             transition: all 0.2s;
+            margin-left: 8px;
         }
-        .btn-refresh:hover {
-            background-color: hsl(142, 70%, 40%);
-            transform: translateY(-1px);
+        .refresh-btn:hover {
+            background: hsl(252, 85%, 60%);
+            border-color: hsl(252, 85%, 60%);
         }
-        .btn-refresh:active {
-            transform: translateY(0);
+        .refresh-btn:hover svg {
+            color: white;
         }
-        .btn-refresh svg {
+        .refresh-btn svg {
             width: 16px;
             height: 16px;
+            color: hsl(220, 25%, 40%);
+            transition: color 0.2s;
         }
-        .ultima-atualizacao {
-            color: hsl(220, 10%, 50%);
-            font-size: 12px;
+        .refresh-btn.spinning svg {
+            animation: spin 0.8s linear infinite;
         }
-        
         /* Section */
         .section {
             background: white;
@@ -453,7 +441,7 @@
             font-weight: 600;
         }
 
-        /* Status Select - Cinza claro padrão, OB e SECON coloridos */
+        /* Status Select - Cinza claro padrão, apenas OB colorido */
         .status-select {
             padding: 8px 12px;
             border: 1px solid hsl(220, 15%, 90%);
@@ -463,18 +451,17 @@
             background: hsl(220, 20%, 98%);
             cursor: pointer;
             min-width: 140px;
+            text-align: center;
+            text-align-last: center;
         }
         .status-select.montando,
         .status-select.aguardando,
         .status-select.dicom,
         .status-select.daf,
+        .status-select.secon,
         .status-select.enviado {
             background: hsl(220, 20%, 98%);
             border-color: hsl(220, 15%, 90%);
-        }
-        .status-select.secon {
-            background: hsl(217, 90%, 95%);
-            border-color: hsl(217, 90%, 70%);
         }
         .status-select.ob {
             background: hsl(142, 70%, 93%);
@@ -653,7 +640,8 @@
         .controle-pagamento-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
+            font-family: Tahoma, Geneva, sans-serif;
+            font-size: 15px;
             margin-bottom: 16px;
         }
         .controle-pagamento-table th,
@@ -666,7 +654,7 @@
         .controle-pagamento-table th {
             background: white;
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: 15px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             color: #000;
@@ -730,19 +718,14 @@
                     <path d="M8 21h8M12 17v4"/>
                 </svg>
                 <h1>Planejamento de Pagamentos</h1>
+                <button class="refresh-btn" onclick="refreshAll()" title="Atualizar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 11-2.636-6.364"/>
+                        <path d="M21 3v6h-6"/>
+                    </svg>
+                </button>
             </div>
-        </div>
-        
-        <!-- NOVO: Barra de Atualização -->
-        <div class="refresh-container">
-            <span id="ultima-atualizacao" class="ultima-atualizacao"></span>
-            <button onclick="atualizarManualmente()" class="btn-refresh">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 4v6h-6M1 20v-6h6"/>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-                Atualizar
-            </button>
+            <p id="lastUpdateText" style="font-size:0.75rem;color:hsl(220,10%,55%);margin-top:8px;"></p>
         </div>
 
         <!-- Divisão de Notas por Executor - Collapsible -->
@@ -891,55 +874,20 @@
         // ==========================================
         var dados = { emProcesso: [], atestadas: [], pagas: [] };
         var DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        
-        // MODIFICADO: Adicionado SECON entre DAF e OB
         var STATUS_OPTIONS = [
             { value: 'montando', label: 'Montando' },
             { value: 'aguardando', label: 'Aguardando Assinaturas' },
             { value: 'dicom', label: 'DICOM' },
             { value: 'daf', label: 'DAF' },
             { value: 'secon', label: 'SECON' },
-            { value: 'ob', label: 'OB' },
+            { value: 'ob', label: 'SEFIN - OB' },
             { value: 'enviado', label: 'Controle Retenções Enviado' }
         ];
-        
         var searchTimeoutGerador = null;
         var selectedDates = [];
         var datasDisponiveis = [];
         var executorSectionOpen = false;
-        
-        // NOVO: Variáveis para auto-refresh
-        var ultimaAtualizacao = new Date();
-        var autoRefreshInterval = null;
-        var AUTO_REFRESH_MS = 300000; // 5 minutos
-
-        // ==========================================
-        // FUNÇÕES DE AUTO-REFRESH - NOVO
-        // ==========================================
-        function iniciarAutoRefresh() {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-            }
-            autoRefreshInterval = setInterval(function() {
-                loadData();
-                ultimaAtualizacao = new Date();
-                atualizarIndicadorTempo();
-            }, AUTO_REFRESH_MS);
-        }
-
-        function atualizarManualmente() {
-            loadData();
-            ultimaAtualizacao = new Date();
-            atualizarIndicadorTempo();
-        }
-
-        function atualizarIndicadorTempo() {
-            var indicador = document.getElementById('ultima-atualizacao');
-            if (indicador) {
-                var hora = ultimaAtualizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                indicador.textContent = 'Última atualização: ' + hora;
-            }
-        }
+        var lastUpdateTime = null;
 
         // ==========================================
         // FUNÇÕES UTILITÁRIAS
@@ -1058,6 +1006,19 @@
         }
 
         // ==========================================
+        // REFRESH ALL
+        // ==========================================
+        function refreshAll() {
+            var btn = document.querySelector('.refresh-btn');
+            btn.classList.add('spinning');
+            loadData();
+            carregarExecutorDatasDisponiveis();
+            setTimeout(function() {
+                btn.classList.remove('spinning');
+            }, 1000);
+        }
+
+        // ==========================================
         // TOGGLE EXECUTOR SECTION
         // ==========================================
         function toggleExecutorSection() {
@@ -1107,6 +1068,7 @@
 
         // ==========================================
         // RENDER EM PROCESSO - Centralizado com totais
+        // Ordenado por data de atesto (mais antiga para mais recente)
         // ==========================================
         function renderEmProcesso() {
             var tbody = document.getElementById('tbody-processo');
@@ -1118,6 +1080,13 @@
                 tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><p>Nenhum pagamento em processo</p></div></td></tr>';
                 return;
             }
+
+            // Ordenar por data de atesto - da mais recente para a mais antiga
+            items.sort(function(a, b) {
+                if (!a.dataAtesto) return 1;
+                if (!b.dataAtesto) return -1;
+                return new Date(b.dataAtesto) - new Date(a.dataAtesto);
+            });
 
             var totalValor = 0;
             var totalQtd = 0;
@@ -1337,6 +1306,8 @@
                     .withSuccessHandler(function(result) {
                         showLoading(false);
                         dados = result;
+                        lastUpdateTime = new Date();
+                        updateLastUpdateText();
                         renderEmProcesso();
                         renderAtestadas();
                         renderPagas();
@@ -1350,6 +1321,34 @@
                 showLoading(false);
             }
         }
+
+        function updateLastUpdateText() {
+            var el = document.getElementById('lastUpdateText');
+            if (!el || !lastUpdateTime) return;
+            
+            var now = new Date();
+            var diffMs = now - lastUpdateTime;
+            var diffMins = Math.floor(diffMs / 60000);
+            var diffHours = Math.floor(diffMins / 60);
+            
+            var text = 'Última atualização há ';
+            if (diffHours > 0) {
+                text += diffHours + ' hora' + (diffHours > 1 ? 's' : '');
+                var remainingMins = diffMins % 60;
+                if (remainingMins > 0) {
+                    text += ' e ' + remainingMins + ' minuto' + (remainingMins > 1 ? 's' : '');
+                }
+            } else if (diffMins > 0) {
+                text += diffMins + ' minuto' + (diffMins > 1 ? 's' : '');
+            } else {
+                text += 'poucos segundos';
+            }
+            
+            el.textContent = text;
+        }
+
+        // Atualizar o texto a cada minuto
+        setInterval(updateLastUpdateText, 60000);
 
         // ==========================================
         // DATE DROPDOWN - Pré-seleciona data mais recente
@@ -1493,6 +1492,7 @@
 
         // ==========================================
         // RENDER EXECUTORES - Usa dados já agrupados do GAS
+        // Campos: nome, av, calia, ebm, total, analisadas, emAnalise, valor, nfsAv, nfsCalia, nfsEbm
         // ==========================================
         function renderExecutores(result) {
             var container = document.getElementById('executorTableContainer');
@@ -1625,78 +1625,52 @@
             }
         }
 
-        // Guarda saldo para uso posterior
-        var saldoAtualGlobal = 0;
-
         function exibirTabelaGerador(data) {
             document.getElementById('loadingGerador').style.display = 'none';
             var container = document.getElementById('tableContainerGerador');
 
             if (!data || data.length === 0) {
                 container.innerHTML = '<p style="color:hsl(0,75%,45%);">Nenhuma Nota Fiscal encontrada.</p>';
+                document.getElementById('atestoInfoGerador').innerHTML = '';
                 return;
             }
 
-            // MODIFICADO: Calcular com base em glosa
+            // Calcular totais
+            var totalValorNF = 0;  // Soma da coluna G (valor_nf_agencia)
+            var totalGlosa = 0;
             var hasAnyGlosa = false;
-            var totalValorNfG = 0;  // Soma coluna G
-            var totalValorAposGlosa = 0;  // Soma coluna AK
             var nfList = [];
 
             data.forEach(function(r) {
-                totalValorNfG += Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
-                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
-                totalValorAposGlosa += valorAposGlosa;
-                if (valorAposGlosa > 0) hasAnyGlosa = true;
+                totalValorNF += Number(r.valor_nf_agencia) || 0;
+                var glosa = Number(r.glosa) || 0;
+                if (glosa > 0) {
+                    hasAnyGlosa = true;
+                    totalGlosa += glosa;
+                }
                 if (r.nf && r.nf !== '-') nfList.push(r.nf);
             });
+
+            var valorAposGlosa = totalValorNF - totalGlosa;
 
             nfList = [...new Set(nfList)].sort(function(a, b) { return Number(a) - Number(b); });
             var nfTexto = nfList.length > 1 ? nfList.slice(0, -1).join(', ') + ' e ' + nfList[nfList.length - 1] : nfList[0];
 
-            // MODIFICADO: Montante total usa valor_apos_glosa quando há glosa
-            var montanteTotal = hasAnyGlosa ? totalValorAposGlosa : totalValorNfG;
-
-            // Texto para atesto - SEM fundo
-            document.getElementById('atestoInfoGerador').innerHTML = '<div class="atesto-text"><strong>Texto para atesto:</strong> ' + nfTexto + ', no montante total de <strong>' + formatCurrency(montanteTotal) + '</strong></div>';
+            // Texto para atesto - valor é "valor após glosa" quando há glosa, senão "valor da NF"
+            var valorTextoAtesto = hasAnyGlosa ? valorAposGlosa : totalValorNF;
+            document.getElementById('atestoInfoGerador').innerHTML = '<div class="atesto-text"><strong>Texto para atesto:</strong> ' + nfTexto + ', no montante total de <strong>' + formatCurrency(valorTextoAtesto) + '</strong></div>';
 
             // Calcular saldo progressivo
             google.script.run
                 .withSuccessHandler(function(result) {
-                    saldoAtualGlobal = result ? result.saldo : 0;
-                    renderTabelaControle(data, saldoAtualGlobal, container);
+                    renderTabelaControle(data, result ? result.saldo : 0, container, hasAnyGlosa, totalValorNF, totalGlosa, valorAposGlosa);
                 })
                 .getSaldoByPI(document.getElementById('valorBuscaGerador').value.trim());
         }
 
-        // MODIFICADO: renderTabelaControle com lógica de glosa corrigida
-        function renderTabelaControle(data, saldoInicial, container) {
-            var saldoAtual = saldoInicial;
-            var hasAnyGlosa = false;
-
-            // Verificar se há glosa e calcular totais
-            var totalValorNfG = 0;  // Soma coluna G (Valor da NF)
-            var totalGlosa = 0;
-            var totalValorAposGlosa = 0;  // Soma coluna AK
-
-            data.forEach(function(r) {
-                totalValorNfG += Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
-                var glosa = Number(r.glosa) || 0;
-                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
-                totalGlosa += glosa;
-                totalValorAposGlosa += valorAposGlosa;
-                if (valorAposGlosa > 0 || glosa > 0) {
-                    hasAnyGlosa = true;
-                }
-            });
-
-            // MODIFICADO: Saldo final quando há glosa = Saldo Atual - total valor após glosa
-            var saldoFinal;
-            if (hasAnyGlosa) {
-                saldoFinal = saldoAtual - totalValorAposGlosa;
-            } else {
-                saldoFinal = saldoAtual - totalValorNfG;
-            }
+        function renderTabelaControle(data, saldoInicial, container, hasAnyGlosa, totalValorNF, totalGlosa, valorAposGlosa) {
+            // Saldo final = saldo atual (aba SaldoEmpenhos, coluna H) - valor após glosa
+            var saldoFinal = saldoInicial - valorAposGlosa;
 
             // Botão copiar
             var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">' +
@@ -1727,38 +1701,34 @@
 
             data.forEach(function(r, index) {
                 var glosa = Number(r.glosa) || 0;
-                // MODIFICADO: Exibir valor_nf_g (coluna G) na coluna "Valor da NF"
-                var valorNfExibir = Number(r.valor_nf_g) || Number(r.valor_nf) || 0;
-                var valorAposGlosa = Number(r.valor_apos_glosa) || 0;
-
                 html += '<tr>' +
                     '<td>' + (index + 1) + '</td>' +
                     '<td>' + (r.nf || '-') + '</td>' +
                     '<td>' + (r.veiculo_forn || r.veiculo || '-') + '</td>' +
                     '<td>' + (r.cnpj || '-') + '</td>' +
                     '<td>' + (r.tipo_midia || '-') + '</td>' +
-                    '<td>' + formatCurrency(valorNfExibir) + '</td>';
+                    '<td>' + formatCurrency(r.valor_nf_agencia) + '</td>';
 
                 if (hasAnyGlosa) {
                     html += '<td style="color:hsl(340,50%,35%);">' + (glosa > 0 ? formatCurrency(glosa) : '-') + '</td>';
-                    html += '<td>' + (valorAposGlosa > 0 ? formatCurrency(valorAposGlosa) : '-') + '</td>';
+                    html += '<td class="saldo-dash">-</td>';
                 }
 
                 html += '<td class="saldo-dash">-</td></tr>';
             });
 
-            // Linha de TOTAL - MODIFICADO
+            // Linha de TOTAL - apenas quando há glosa
             if (hasAnyGlosa) {
                 html += '<tr>' +
                     '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
-                    '<td>' + formatCurrency(totalValorNfG) + '</td>' +
+                    '<td>' + formatCurrency(totalValorNF) + '</td>' +
                     '<td style="color:hsl(340,50%,35%);">' + formatCurrency(totalGlosa) + '</td>' +
-                    '<td><strong>' + formatCurrency(totalValorAposGlosa) + '</strong></td>' +
+                    '<td><strong>' + formatCurrency(valorAposGlosa) + '</strong></td>' +
                     '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
             } else {
                 html += '<tr>' +
                     '<td style="text-align:right;" colspan="' + colspanTotal + '"><strong>TOTAL</strong></td>' +
-                    '<td><strong>' + formatCurrency(totalValorNfG) + '</strong></td>' +
+                    '<td><strong>' + formatCurrency(totalValorNF) + '</strong></td>' +
                     '<td style="font-weight:400;">' + formatCurrency(saldoFinal) + '</td></tr>';
             }
 
@@ -1775,20 +1745,21 @@
             range.selectNode(table);
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            document.execCommand('copy');
-            window.getSelection().removeAllRanges();
 
-            // Feedback visual
-            var btn = event.target.closest('.copy-btn');
-            if (btn) {
-                var originalText = btn.innerHTML;
-                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copiado!';
-                btn.style.background = 'hsl(142, 70%, 45%)';
-                setTimeout(function() {
-                    btn.innerHTML = originalText;
-                    btn.style.background = '';
-                }, 2000);
+            try {
+                document.execCommand('copy');
+                var btns = document.querySelectorAll('.copy-btn');
+                btns.forEach(function(btn) {
+                    btn.innerHTML = '✓ Copiado!';
+                    setTimeout(function() {
+                        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copiar Tabela';
+                    }, 2000);
+                });
+            } catch (err) {
+                alert('Erro ao copiar');
             }
+
+            window.getSelection().removeAllRanges();
         }
 
         // ==========================================
@@ -1797,7 +1768,7 @@
         document.addEventListener('click', function(e) {
             var menu = document.getElementById('dateDropdownMenu');
             var trigger = document.querySelector('.date-dropdown-trigger');
-            if (menu && trigger && !menu.contains(e.target) && !trigger.contains(e.target)) {
+            if (menu && !menu.contains(e.target) && !trigger.contains(e.target)) {
                 menu.classList.remove('open');
             }
         });
@@ -1808,10 +1779,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
             carregarExecutorDatasDisponiveis();
-            
-            // NOVO: Iniciar auto-refresh e indicador de tempo
-            iniciarAutoRefresh();
-            atualizarIndicadorTempo();
         });
     </script>
 </body>
