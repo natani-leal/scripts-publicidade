@@ -11,7 +11,7 @@ var COL = {
   DATA_CONSOLIDADO: 1,  // B
   CAMPANHA: 2,          // C
   NF: 5,                // F
-  VALOR_NF_G: 6,        // G - Valor NF (coluna G) - NOVO
+  VALOR_NF_AGENCIA: 6,  // G
   VEICULO: 9,           // J
   CNPJ: 10,             // K
   TIPO_MIDIA: 11,       // L
@@ -22,8 +22,7 @@ var COL = {
   ATESTO: 18,           // S
   CONTROLE: 19,         // T
   DATA_PAGO: 20,        // U
-  VALOR: 27,            // AB
-  VALOR_APOS_GLOSA: 36  // AK - Valor após glosa - NOVO
+  VALOR: 27             // AB
 };
 
 var STATUS = {
@@ -136,11 +135,11 @@ function getEmProcesso() {
   });
 
   var result = Object.values(grupos);
-  // Ordenar por data de atesto (mais antiga para mais recente)
+  // Ordenar por data de atesto - da mais recente para a mais antiga
   result.sort(function(a, b) {
     if (!a.dataAtesto) return 1;
     if (!b.dataAtesto) return -1;
-    return new Date(a.dataAtesto) - new Date(b.dataAtesto);
+    return new Date(b.dataAtesto) - new Date(a.dataAtesto);
   });
   return result;
 }
@@ -278,7 +277,6 @@ function getDados() {
 const SHEET_NAME_EMPENHOS = 'SaldoEmpenhos';
 const SHEET_NAME_CERTIDOES = 'Certidões';
 
-// MODIFICADO: Agora retorna valor_nf_g (coluna G) e valor_apos_glosa (coluna AK)
 function filtrarControleDePagamento(valorBusca) {
   try {
     const data = getAllData_();
@@ -296,15 +294,13 @@ function filtrarControleDePagamento(valorBusca) {
       if (buscaStr === "" || valorT.includes(buscaStr)) {
         out.push({
           agencia_principal: String(r[COL.AGENCIA] || ""),
-          valor_nf_agencia: (r[COL.VALOR_NF_G] === "" || r[COL.VALOR_NF_G] == null) ? 0 : Number(r[COL.VALOR_NF_G]),
-          valor_nf_g: (r[COL.VALOR_NF_G] === "" || r[COL.VALOR_NF_G] == null) ? 0 : Number(r[COL.VALOR_NF_G]),  // Coluna G
+          valor_nf_agencia: (r[COL.VALOR_NF_AGENCIA] === "" || r[COL.VALOR_NF_AGENCIA] == null) ? 0 : Number(r[COL.VALOR_NF_AGENCIA]),
           veiculo_forn: String(r[COL.VEICULO] || ""),
           cnpj: String(r[10] || ""),
           tipo_midia: String(r[COL.TIPO_MIDIA] || ""),
           valor_nf: (r[COL.VALOR] === "" || r[COL.VALOR] == null) ? 0 : Number(r[COL.VALOR]),
           nf: String(r[COL.NF] || ""),
           glosa: (r[COL.GLOSA] === "" || r[COL.GLOSA] == null) ? 0 : Number(r[COL.GLOSA]),
-          valor_apos_glosa: (r[COL.VALOR_APOS_GLOSA] === "" || r[COL.VALOR_APOS_GLOSA] == null) ? 0 : Number(r[COL.VALOR_APOS_GLOSA])  // Coluna AK
         });
       }
     }
@@ -405,7 +401,6 @@ function formatSheetDate_(dateValue) {
   }
   return String(dateValue || 'N/A');
 }
-
 // ==========================================
 // FUNÇÃO PARA EXECUTORES - SUPORTE A MÚLTIPLAS DATAS
 // ==========================================
